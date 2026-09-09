@@ -68,18 +68,16 @@ class ProjectListView(LoginRequiredMixin, ListView):
                 )
         if project_type:
             qs = qs.filter(project_type=project_type)
+        awarded_q = (
+            Q(actual_contract_amount__gt=0) |
+            (Q(award_letter_and_boq__isnull=False) & ~Q(award_letter_and_boq='')) |
+            Q(project_status__icontains='AWARD') |
+            Q(remarks__icontains='AWARD LETTER')
+        )
         if awarded in ['awarded', 'yes', '1', 'true']:
-            qs = qs.filter(
-                Q(actual_contract_amount__gt=0) |
-                Q(current_phase__in=['POST_AWARD', 'EXECUTION']) |
-                (Q(award_letter_and_boq__isnull=False) & ~Q(award_letter_and_boq=''))
-            )
-        elif awarded in ['pre_award', 'no', '0', 'false']:
-            qs = qs.filter(
-                Q(actual_contract_amount=0) &
-                Q(current_phase='PRE_AWARD') &
-                (Q(award_letter_and_boq__isnull=True) | Q(award_letter_and_boq=''))
-            )
+            qs = qs.filter(awarded_q).distinct()
+        elif awarded in ['pre_award', 'awaiting', 'no', '0', 'false']:
+            qs = qs.exclude(awarded_q).distinct()
 
         return qs
 

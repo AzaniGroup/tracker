@@ -368,19 +368,27 @@ class DashboardView(ProjectRequiredMixin, TemplateView):
         # Category Monitoring Matrix (CONSTRUCTION, SUPPLY, EMPOWERMENT, POWER, TRAINING)
         monitoring_matrix = []
         category_list = ['CONSTRUCTION', 'SUPPLY', 'EMPOWERMENT', 'POWER', 'TRAINING']
+        awarded_q = (
+            Q(actual_contract_amount__gt=0) |
+            (Q(award_letter_and_boq__isnull=False) & ~Q(award_letter_and_boq='')) |
+            Q(project_status__icontains='AWARD') |
+            Q(remarks__icontains='AWARD LETTER')
+        )
+
         for cat_name in category_list:
             if cat_name == 'CONSTRUCTION':
-                cat_qs = projects_qs.filter(Q(category__name__iexact='CONSTRUCTION') | Q(category__name__icontains='Civil'))
+                cat_qs = projects_qs.filter(Q(category__name__iexact='CONSTRUCTION') | Q(category__name__icontains='Civil') | Q(project_type__icontains='CONSTRUCTION'))
             else:
-                cat_qs = projects_qs.filter(category__name__iexact=cat_name)
+                cat_qs = projects_qs.filter(Q(category__name__iexact=cat_name) | Q(project_type__iexact=cat_name))
             
             c_total = cat_qs.count()
-            c_awarded = cat_qs.filter(actual_contract_amount__gt=0).count()
+            c_awarded = cat_qs.filter(awarded_q).distinct().count()
             c_awaiting = c_total - c_awarded
             c_budget = cat_qs.aggregate(val=Sum('budget_amount'))['val'] or Decimal('0.00')
             c_awarded_amt = cat_qs.aggregate(val=Sum('actual_contract_amount'))['val'] or Decimal('0.00')
             c_in_house = cat_qs.filter(
-                Q(award_letter_and_boq__isnull=False) & ~Q(award_letter_and_boq='')
+                (Q(award_letter_and_boq__isnull=False) & ~Q(award_letter_and_boq='')) |
+                Q(remarks__icontains='AWARD LETTER')
             ).aggregate(val=Sum('actual_contract_amount'))['val'] or Decimal('0.00')
             c_given_out = max(Decimal('0.00'), c_awarded_amt - c_in_house)
             c_mob_rec = cat_qs.aggregate(val=Sum('mobilization_received'))['val'] or Decimal('0.00')
