@@ -24,12 +24,21 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-2x)%@2_0+#b5&qkil7ii1b%s$@se#u03l(k_cup7_c0m1pj(ws'
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-2x)%@2_0+#b5&qkil7ii1b%s$@se#u03l(k_cup7_c0m1pj(ws')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 't')
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
+
+# CSRF Trusted Origins for Railway HTTPS deployments
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.up.railway.app',
+    'https://azani-tracker.up.railway.app',
+]
+raw_trusted_origins = os.getenv('CSRF_TRUSTED_ORIGINS', '')
+if raw_trusted_origins:
+    CSRF_TRUSTED_ORIGINS.extend([origin.strip() for origin in raw_trusted_origins.split(',') if origin])
 
 
 # Application definition
