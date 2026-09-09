@@ -302,6 +302,10 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         context['tranche_form'] = SubcontractorPaymentTrancheForm()
         # Fetch lifecycle stages ordered by sequence_order
         lifecycle_stages = self.object.lifecycle_stages.all()
+        if not lifecycle_stages.exists():
+            from .signals import populate_project_lifecycle_stages
+            populate_project_lifecycle_stages(Project, self.object, True)
+            lifecycle_stages = self.object.lifecycle_stages.all()
         context['lifecycle_stages'] = lifecycle_stages
         
         # Group lifecycle stages by phases
