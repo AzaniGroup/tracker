@@ -211,14 +211,19 @@ class Project(models.Model):
 
     
     def get_fee_amount(self, fee_type_name):
-        """Helper to retrieve amount for a specific FeeType name, falling back to default_percentage calculation if no specific fee record exists or if amount is 0."""
+        """Helper to retrieve amount for a specific FeeType name.
+        If a ProjectFee record exists with a set amount, use it.
+        For 'Logistics & Monitoring', if no fixed amount is set, dynamically calculate percentage based on FeeType.default_percentage.
+        All other fees are fixed amounts."""
         fee = self.fees.filter(fee_type__name__iexact=fee_type_name).first()
         if fee and fee.amount > 0:
             return fee.amount
         
-        fee_type = FeeType.objects.filter(name__iexact=fee_type_name).first()
-        if fee_type and fee_type.default_percentage > 0 and self.actual_contract_amount:
-            return round((Decimal(self.actual_contract_amount) * Decimal(fee_type.default_percentage)) / Decimal('100.00'), 2)
+        # Only 'Logistics & Monitoring' is percentage-based
+        if 'logistics' in fee_type_name.lower():
+            fee_type = FeeType.objects.filter(name__iexact=fee_type_name).first()
+            if fee_type and fee_type.default_percentage > 0 and self.actual_contract_amount:
+                return round((Decimal(self.actual_contract_amount) * Decimal(fee_type.default_percentage)) / Decimal('100.00'), 2)
             
         return Decimal('0.00')
 
@@ -359,14 +364,19 @@ class ProjectFee(models.Model):
 
     
     def get_fee_amount(self, fee_type_name):
-        """Helper to retrieve amount for a specific FeeType name, falling back to default_percentage calculation if no specific fee record exists or if amount is 0."""
+        """Helper to retrieve amount for a specific FeeType name.
+        If a ProjectFee record exists with a set amount, use it.
+        For 'Logistics & Monitoring', if no fixed amount is set, dynamically calculate percentage based on FeeType.default_percentage.
+        All other fees are fixed amounts."""
         fee = self.fees.filter(fee_type__name__iexact=fee_type_name).first()
         if fee and fee.amount > 0:
             return fee.amount
         
-        fee_type = FeeType.objects.filter(name__iexact=fee_type_name).first()
-        if fee_type and fee_type.default_percentage > 0 and self.actual_contract_amount:
-            return round((Decimal(self.actual_contract_amount) * Decimal(fee_type.default_percentage)) / Decimal('100.00'), 2)
+        # Only 'Logistics & Monitoring' is percentage-based
+        if 'logistics' in fee_type_name.lower():
+            fee_type = FeeType.objects.filter(name__iexact=fee_type_name).first()
+            if fee_type and fee_type.default_percentage > 0 and self.actual_contract_amount:
+                return round((Decimal(self.actual_contract_amount) * Decimal(fee_type.default_percentage)) / Decimal('100.00'), 2)
             
         return Decimal('0.00')
 
@@ -409,14 +419,19 @@ class ProjectAllocation(models.Model):
 
     
     def get_fee_amount(self, fee_type_name):
-        """Helper to retrieve amount for a specific FeeType name, falling back to default_percentage calculation if no specific fee record exists or if amount is 0."""
+        """Helper to retrieve amount for a specific FeeType name.
+        If a ProjectFee record exists with a set amount, use it.
+        For 'Logistics & Monitoring', if no fixed amount is set, dynamically calculate percentage based on FeeType.default_percentage.
+        All other fees are fixed amounts."""
         fee = self.fees.filter(fee_type__name__iexact=fee_type_name).first()
         if fee and fee.amount > 0:
             return fee.amount
         
-        fee_type = FeeType.objects.filter(name__iexact=fee_type_name).first()
-        if fee_type and fee_type.default_percentage > 0 and self.actual_contract_amount:
-            return round((Decimal(self.actual_contract_amount) * Decimal(fee_type.default_percentage)) / Decimal('100.00'), 2)
+        # Only 'Logistics & Monitoring' is percentage-based
+        if 'logistics' in fee_type_name.lower():
+            fee_type = FeeType.objects.filter(name__iexact=fee_type_name).first()
+            if fee_type and fee_type.default_percentage > 0 and self.actual_contract_amount:
+                return round((Decimal(self.actual_contract_amount) * Decimal(fee_type.default_percentage)) / Decimal('100.00'), 2)
             
         return Decimal('0.00')
 
@@ -481,14 +496,19 @@ class SubcontractorPaymentTranche(models.Model):
 
     
     def get_fee_amount(self, fee_type_name):
-        """Helper to retrieve amount for a specific FeeType name, falling back to default_percentage calculation if no specific fee record exists or if amount is 0."""
+        """Helper to retrieve amount for a specific FeeType name.
+        If a ProjectFee record exists with a set amount, use it.
+        For 'Logistics & Monitoring', if no fixed amount is set, dynamically calculate percentage based on FeeType.default_percentage.
+        All other fees are fixed amounts."""
         fee = self.fees.filter(fee_type__name__iexact=fee_type_name).first()
         if fee and fee.amount > 0:
             return fee.amount
         
-        fee_type = FeeType.objects.filter(name__iexact=fee_type_name).first()
-        if fee_type and fee_type.default_percentage > 0 and self.actual_contract_amount:
-            return round((Decimal(self.actual_contract_amount) * Decimal(fee_type.default_percentage)) / Decimal('100.00'), 2)
+        # Only 'Logistics & Monitoring' is percentage-based
+        if 'logistics' in fee_type_name.lower():
+            fee_type = FeeType.objects.filter(name__iexact=fee_type_name).first()
+            if fee_type and fee_type.default_percentage > 0 and self.actual_contract_amount:
+                return round((Decimal(self.actual_contract_amount) * Decimal(fee_type.default_percentage)) / Decimal('100.00'), 2)
             
         return Decimal('0.00')
 
@@ -538,14 +558,19 @@ class ProjectLifecycleStage(models.Model):
 
     
     def get_fee_amount(self, fee_type_name):
-        """Helper to retrieve amount for a specific FeeType name, falling back to default_percentage calculation if no specific fee record exists or if amount is 0."""
+        """Helper to retrieve amount for a specific FeeType name.
+        If a ProjectFee record exists with a set amount, use it.
+        For 'Logistics & Monitoring', if no fixed amount is set, dynamically calculate percentage based on FeeType.default_percentage.
+        All other fees are fixed amounts."""
         fee = self.fees.filter(fee_type__name__iexact=fee_type_name).first()
         if fee and fee.amount > 0:
             return fee.amount
         
-        fee_type = FeeType.objects.filter(name__iexact=fee_type_name).first()
-        if fee_type and fee_type.default_percentage > 0 and self.actual_contract_amount:
-            return round((Decimal(self.actual_contract_amount) * Decimal(fee_type.default_percentage)) / Decimal('100.00'), 2)
+        # Only 'Logistics & Monitoring' is percentage-based
+        if 'logistics' in fee_type_name.lower():
+            fee_type = FeeType.objects.filter(name__iexact=fee_type_name).first()
+            if fee_type and fee_type.default_percentage > 0 and self.actual_contract_amount:
+                return round((Decimal(self.actual_contract_amount) * Decimal(fee_type.default_percentage)) / Decimal('100.00'), 2)
             
         return Decimal('0.00')
 
@@ -604,14 +629,19 @@ class UnplannedExpense(models.Model):
 
     
     def get_fee_amount(self, fee_type_name):
-        """Helper to retrieve amount for a specific FeeType name, falling back to default_percentage calculation if no specific fee record exists or if amount is 0."""
+        """Helper to retrieve amount for a specific FeeType name.
+        If a ProjectFee record exists with a set amount, use it.
+        For 'Logistics & Monitoring', if no fixed amount is set, dynamically calculate percentage based on FeeType.default_percentage.
+        All other fees are fixed amounts."""
         fee = self.fees.filter(fee_type__name__iexact=fee_type_name).first()
         if fee and fee.amount > 0:
             return fee.amount
         
-        fee_type = FeeType.objects.filter(name__iexact=fee_type_name).first()
-        if fee_type and fee_type.default_percentage > 0 and self.actual_contract_amount:
-            return round((Decimal(self.actual_contract_amount) * Decimal(fee_type.default_percentage)) / Decimal('100.00'), 2)
+        # Only 'Logistics & Monitoring' is percentage-based
+        if 'logistics' in fee_type_name.lower():
+            fee_type = FeeType.objects.filter(name__iexact=fee_type_name).first()
+            if fee_type and fee_type.default_percentage > 0 and self.actual_contract_amount:
+                return round((Decimal(self.actual_contract_amount) * Decimal(fee_type.default_percentage)) / Decimal('100.00'), 2)
             
         return Decimal('0.00')
 
@@ -655,14 +685,19 @@ class ProjectMonitoringLog(models.Model):
 
     
     def get_fee_amount(self, fee_type_name):
-        """Helper to retrieve amount for a specific FeeType name, falling back to default_percentage calculation if no specific fee record exists or if amount is 0."""
+        """Helper to retrieve amount for a specific FeeType name.
+        If a ProjectFee record exists with a set amount, use it.
+        For 'Logistics & Monitoring', if no fixed amount is set, dynamically calculate percentage based on FeeType.default_percentage.
+        All other fees are fixed amounts."""
         fee = self.fees.filter(fee_type__name__iexact=fee_type_name).first()
         if fee and fee.amount > 0:
             return fee.amount
         
-        fee_type = FeeType.objects.filter(name__iexact=fee_type_name).first()
-        if fee_type and fee_type.default_percentage > 0 and self.actual_contract_amount:
-            return round((Decimal(self.actual_contract_amount) * Decimal(fee_type.default_percentage)) / Decimal('100.00'), 2)
+        # Only 'Logistics & Monitoring' is percentage-based
+        if 'logistics' in fee_type_name.lower():
+            fee_type = FeeType.objects.filter(name__iexact=fee_type_name).first()
+            if fee_type and fee_type.default_percentage > 0 and self.actual_contract_amount:
+                return round((Decimal(self.actual_contract_amount) * Decimal(fee_type.default_percentage)) / Decimal('100.00'), 2)
             
         return Decimal('0.00')
 
@@ -712,14 +747,19 @@ class ProjectMonitoringImage(models.Model):
 
     
     def get_fee_amount(self, fee_type_name):
-        """Helper to retrieve amount for a specific FeeType name, falling back to default_percentage calculation if no specific fee record exists or if amount is 0."""
+        """Helper to retrieve amount for a specific FeeType name.
+        If a ProjectFee record exists with a set amount, use it.
+        For 'Logistics & Monitoring', if no fixed amount is set, dynamically calculate percentage based on FeeType.default_percentage.
+        All other fees are fixed amounts."""
         fee = self.fees.filter(fee_type__name__iexact=fee_type_name).first()
         if fee and fee.amount > 0:
             return fee.amount
         
-        fee_type = FeeType.objects.filter(name__iexact=fee_type_name).first()
-        if fee_type and fee_type.default_percentage > 0 and self.actual_contract_amount:
-            return round((Decimal(self.actual_contract_amount) * Decimal(fee_type.default_percentage)) / Decimal('100.00'), 2)
+        # Only 'Logistics & Monitoring' is percentage-based
+        if 'logistics' in fee_type_name.lower():
+            fee_type = FeeType.objects.filter(name__iexact=fee_type_name).first()
+            if fee_type and fee_type.default_percentage > 0 and self.actual_contract_amount:
+                return round((Decimal(self.actual_contract_amount) * Decimal(fee_type.default_percentage)) / Decimal('100.00'), 2)
             
         return Decimal('0.00')
 
@@ -772,14 +812,19 @@ class ProjectActivityLog(models.Model):
 
     
     def get_fee_amount(self, fee_type_name):
-        """Helper to retrieve amount for a specific FeeType name, falling back to default_percentage calculation if no specific fee record exists or if amount is 0."""
+        """Helper to retrieve amount for a specific FeeType name.
+        If a ProjectFee record exists with a set amount, use it.
+        For 'Logistics & Monitoring', if no fixed amount is set, dynamically calculate percentage based on FeeType.default_percentage.
+        All other fees are fixed amounts."""
         fee = self.fees.filter(fee_type__name__iexact=fee_type_name).first()
         if fee and fee.amount > 0:
             return fee.amount
         
-        fee_type = FeeType.objects.filter(name__iexact=fee_type_name).first()
-        if fee_type and fee_type.default_percentage > 0 and self.actual_contract_amount:
-            return round((Decimal(self.actual_contract_amount) * Decimal(fee_type.default_percentage)) / Decimal('100.00'), 2)
+        # Only 'Logistics & Monitoring' is percentage-based
+        if 'logistics' in fee_type_name.lower():
+            fee_type = FeeType.objects.filter(name__iexact=fee_type_name).first()
+            if fee_type and fee_type.default_percentage > 0 and self.actual_contract_amount:
+                return round((Decimal(self.actual_contract_amount) * Decimal(fee_type.default_percentage)) / Decimal('100.00'), 2)
             
         return Decimal('0.00')
 
@@ -818,14 +863,19 @@ class ProjectPhaseComment(models.Model):
 
     
     def get_fee_amount(self, fee_type_name):
-        """Helper to retrieve amount for a specific FeeType name, falling back to default_percentage calculation if no specific fee record exists or if amount is 0."""
+        """Helper to retrieve amount for a specific FeeType name.
+        If a ProjectFee record exists with a set amount, use it.
+        For 'Logistics & Monitoring', if no fixed amount is set, dynamically calculate percentage based on FeeType.default_percentage.
+        All other fees are fixed amounts."""
         fee = self.fees.filter(fee_type__name__iexact=fee_type_name).first()
         if fee and fee.amount > 0:
             return fee.amount
         
-        fee_type = FeeType.objects.filter(name__iexact=fee_type_name).first()
-        if fee_type and fee_type.default_percentage > 0 and self.actual_contract_amount:
-            return round((Decimal(self.actual_contract_amount) * Decimal(fee_type.default_percentage)) / Decimal('100.00'), 2)
+        # Only 'Logistics & Monitoring' is percentage-based
+        if 'logistics' in fee_type_name.lower():
+            fee_type = FeeType.objects.filter(name__iexact=fee_type_name).first()
+            if fee_type and fee_type.default_percentage > 0 and self.actual_contract_amount:
+                return round((Decimal(self.actual_contract_amount) * Decimal(fee_type.default_percentage)) / Decimal('100.00'), 2)
             
         return Decimal('0.00')
 
