@@ -172,10 +172,10 @@
           </div>
 
           <!-- Administration Section -->
-          {% if user.is_superuser or user|has_group:'Level 3' or user|has_group:'Level 4' or can_manage_users %}
+          {% if user.is_superuser or user|has_group:'Level 4' or can_manage_users %}
           <div class="space-y-1">
             <span class="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1.5">Administration</span>
-            {% if user.is_superuser or user|has_group:'Level 3' or user|has_group:'Level 4' %}
+            {% if user.is_superuser or user|has_group:'Level 4' %}
             <a href="{% url 'projects:settings' %}"
               class="flex items-center px-4 py-2 text-sm font-medium text-gray-600 rounded-md hover:bg-gray-50 group transition {% if 'projects/settings' in request.path %}active-nav-item{% endif %}">
               <span class="material-symbols-outlined mr-3 text-gray-400 group-hover:text-gray-500 text-lg">settings</span>

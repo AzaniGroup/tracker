@@ -461,7 +461,7 @@ class UpdateLifecycleStageView(Level3RequiredMixin, View):
         return HttpResponseRedirect(request.META.get('HTTP_REFERER', '/'))
 
 
-class ProjectSettingsView(Level3RequiredMixin, View):
+class ProjectSettingsView(Level4RequiredMixin, View):
 
     def get_context_data(self, request, cat_form=None, fee_form=None, active_tab='categories'):
         edit_cat_id = request.GET.get('edit_cat')

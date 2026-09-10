@@ -11,13 +11,15 @@ from .models import JobTitle, Profile
 
 
 User = get_user_model()
-MANAGEMENT_LEVELS = ('Level 1', 'Level 3', 'Level 4')
+MANAGEMENT_LEVELS = ('Level 4',)
 
 
 class ManagementAccessMixin(LoginRequiredMixin, UserPassesTestMixin):
     def test_func(self):
         user = self.request.user
-        if user.is_superuser or user.is_staff:
+        if not user.is_authenticated:
+            return False
+        if user.is_superuser:
             return True
         return user.groups.filter(name__in=MANAGEMENT_LEVELS).exists()
 
