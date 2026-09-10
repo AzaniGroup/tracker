@@ -48,12 +48,12 @@ class ProjectMonitoringLogAdmin(admin.ModelAdmin):
 
 @admin.register(ProjectCategory)
 class ProjectCategoryAdmin(admin.ModelAdmin):
-    list_display = ('name', 'description')
+    list_display = ('name', 'default_percentage', 'description')
     search_fields = ('name',)
 
 @admin.register(FeeType)
 class FeeTypeAdmin(admin.ModelAdmin):
-    list_display = ('name', 'description')
+    list_display = ('name', 'default_percentage', 'description')
     search_fields = ('name',)
 
 @admin.register(ProjectFee)
