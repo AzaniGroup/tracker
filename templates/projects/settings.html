@@ -167,6 +167,16 @@
                     {% endif %}
                 </div>
 
+                <!-- Default Percentage -->
+                <div class="space-y-1">
+                    <label for="{{ fee_form.default_percentage.id_for_label }}" class="block text-sm font-semibold text-gray-700">Default Percentage (%)</label>
+                    {{ fee_form.default_percentage }}
+                    <p class="text-[11px] text-gray-500">e.g. Enter 10.00 for 10% of actual contract amount (auto-calculated on projects).</p>
+                    {% if fee_form.default_percentage.errors %}
+                    <p class="text-xs text-red-650 mt-1">{{ fee_form.default_percentage.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
                 <!-- Description -->
                 <div class="space-y-1">
                     <label for="{{ fee_form.description.id_for_label }}" class="block text-sm font-semibold text-gray-700">Description</label>
@@ -206,7 +216,14 @@
                 {% for fee in fee_types %}
                 <div class="p-6 flex items-start justify-between gap-4 hover:bg-gray-50/50 transition duration-150">
                     <div class="space-y-1 flex-1">
-                        <h3 class="font-bold text-gray-900 text-base">{{ fee.name }}</h3>
+                        <div class="flex items-center space-x-2">
+                            <h3 class="font-bold text-gray-900 text-base">{{ fee.name }}</h3>
+                            {% if fee.default_percentage > 0 %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#bfa12c] bg-opacity-20 text-[#a88d25]">
+                              {{ fee.default_percentage }}% Default
+                            </span>
+                            {% endif %}
+                        </div>
                         <p class="text-sm text-gray-500">{{ fee.description|default:"No description provided." }}</p>
                     </div>
                     

@@ -92,9 +92,10 @@ class ProjectCategoryForm(forms.ModelForm):
 class FeeTypeForm(forms.ModelForm):
     class Meta:
         model = FeeType
-        fields = ['name', 'description']
+        fields = ['name', 'default_percentage', 'description']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'w-full rounded-md border-gray-300 shadow-sm focus:border-[#bfa12c] focus:ring-[#bfa12c] py-2 px-3 text-sm'}),
+            'default_percentage': forms.NumberInput(attrs={'class': 'w-full rounded-md border-gray-300 shadow-sm focus:border-[#bfa12c] focus:ring-[#bfa12c] py-2 px-3 text-sm', 'step': '0.01', 'placeholder': 'e.g. 10.00 for 10%'}),
             'description': forms.Textarea(attrs={'rows': 3, 'class': 'w-full rounded-md border-gray-300 shadow-sm focus:border-[#bfa12c] focus:ring-[#bfa12c] py-2 px-3 text-sm'}),
         }
 

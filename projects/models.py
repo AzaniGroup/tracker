@@ -31,29 +31,19 @@ class ProjectCategory(models.Model):
         ordering = ['name']
 
     
-    def get_fee_amount(self, fee_type_name):
-        """Helper to retrieve amount for a specific FeeType name."""
-        fee = self.fees.filter(fee_type__name__iexact=fee_type_name).first()
-        return fee.amount if fee else Decimal('0.00')
-
-    @property
-    def admin_fee_paid(self):
-        return self.get_fee_amount('Admin Fee')
-
-    @property
-    def facilitation_fee(self):
-        return self.get_fee_amount('Facilitation Fee (PR)')
-
-    @property
-    def logistics_and_monitoring_fee(self):
-        return self.get_fee_amount('Logistics & Monitoring')
-
     def __str__(self):
         return self.name
 
 
 class FeeType(models.Model):
     name = models.CharField(max_length=100, unique=True, verbose_name="Fee Type Name")
+    default_percentage = models.DecimalField(
+        max_digits=5, 
+        decimal_places=2, 
+        default=0.00, 
+        verbose_name="Default Percentage (%)",
+        help_text="Default percentage calculated against actual contract amount (e.g. 10.00 for 10%)"
+    )
     description = models.TextField(blank=True, null=True)
 
     class Meta:
@@ -62,23 +52,6 @@ class FeeType(models.Model):
         ordering = ['name']
 
     
-    def get_fee_amount(self, fee_type_name):
-        """Helper to retrieve amount for a specific FeeType name."""
-        fee = self.fees.filter(fee_type__name__iexact=fee_type_name).first()
-        return fee.amount if fee else Decimal('0.00')
-
-    @property
-    def admin_fee_paid(self):
-        return self.get_fee_amount('Admin Fee')
-
-    @property
-    def facilitation_fee(self):
-        return self.get_fee_amount('Facilitation Fee (PR)')
-
-    @property
-    def logistics_and_monitoring_fee(self):
-        return self.get_fee_amount('Logistics & Monitoring')
-
     def __str__(self):
         return self.name
 
@@ -238,9 +211,16 @@ class Project(models.Model):
 
     
     def get_fee_amount(self, fee_type_name):
-        """Helper to retrieve amount for a specific FeeType name."""
+        """Helper to retrieve amount for a specific FeeType name, falling back to default_percentage calculation if no specific fee record exists or if amount is 0."""
         fee = self.fees.filter(fee_type__name__iexact=fee_type_name).first()
-        return fee.amount if fee else Decimal('0.00')
+        if fee and fee.amount > 0:
+            return fee.amount
+        
+        fee_type = FeeType.objects.filter(name__iexact=fee_type_name).first()
+        if fee_type and fee_type.default_percentage > 0 and self.actual_contract_amount:
+            return round((Decimal(self.actual_contract_amount) * Decimal(fee_type.default_percentage)) / Decimal('100.00'), 2)
+            
+        return Decimal('0.00')
 
     @property
     def admin_fee_paid(self):
@@ -379,9 +359,16 @@ class ProjectFee(models.Model):
 
     
     def get_fee_amount(self, fee_type_name):
-        """Helper to retrieve amount for a specific FeeType name."""
+        """Helper to retrieve amount for a specific FeeType name, falling back to default_percentage calculation if no specific fee record exists or if amount is 0."""
         fee = self.fees.filter(fee_type__name__iexact=fee_type_name).first()
-        return fee.amount if fee else Decimal('0.00')
+        if fee and fee.amount > 0:
+            return fee.amount
+        
+        fee_type = FeeType.objects.filter(name__iexact=fee_type_name).first()
+        if fee_type and fee_type.default_percentage > 0 and self.actual_contract_amount:
+            return round((Decimal(self.actual_contract_amount) * Decimal(fee_type.default_percentage)) / Decimal('100.00'), 2)
+            
+        return Decimal('0.00')
 
     @property
     def admin_fee_paid(self):
@@ -422,9 +409,16 @@ class ProjectAllocation(models.Model):
 
     
     def get_fee_amount(self, fee_type_name):
-        """Helper to retrieve amount for a specific FeeType name."""
+        """Helper to retrieve amount for a specific FeeType name, falling back to default_percentage calculation if no specific fee record exists or if amount is 0."""
         fee = self.fees.filter(fee_type__name__iexact=fee_type_name).first()
-        return fee.amount if fee else Decimal('0.00')
+        if fee and fee.amount > 0:
+            return fee.amount
+        
+        fee_type = FeeType.objects.filter(name__iexact=fee_type_name).first()
+        if fee_type and fee_type.default_percentage > 0 and self.actual_contract_amount:
+            return round((Decimal(self.actual_contract_amount) * Decimal(fee_type.default_percentage)) / Decimal('100.00'), 2)
+            
+        return Decimal('0.00')
 
     @property
     def admin_fee_paid(self):
@@ -487,9 +481,16 @@ class SubcontractorPaymentTranche(models.Model):
 
     
     def get_fee_amount(self, fee_type_name):
-        """Helper to retrieve amount for a specific FeeType name."""
+        """Helper to retrieve amount for a specific FeeType name, falling back to default_percentage calculation if no specific fee record exists or if amount is 0."""
         fee = self.fees.filter(fee_type__name__iexact=fee_type_name).first()
-        return fee.amount if fee else Decimal('0.00')
+        if fee and fee.amount > 0:
+            return fee.amount
+        
+        fee_type = FeeType.objects.filter(name__iexact=fee_type_name).first()
+        if fee_type and fee_type.default_percentage > 0 and self.actual_contract_amount:
+            return round((Decimal(self.actual_contract_amount) * Decimal(fee_type.default_percentage)) / Decimal('100.00'), 2)
+            
+        return Decimal('0.00')
 
     @property
     def admin_fee_paid(self):
@@ -537,9 +538,16 @@ class ProjectLifecycleStage(models.Model):
 
     
     def get_fee_amount(self, fee_type_name):
-        """Helper to retrieve amount for a specific FeeType name."""
+        """Helper to retrieve amount for a specific FeeType name, falling back to default_percentage calculation if no specific fee record exists or if amount is 0."""
         fee = self.fees.filter(fee_type__name__iexact=fee_type_name).first()
-        return fee.amount if fee else Decimal('0.00')
+        if fee and fee.amount > 0:
+            return fee.amount
+        
+        fee_type = FeeType.objects.filter(name__iexact=fee_type_name).first()
+        if fee_type and fee_type.default_percentage > 0 and self.actual_contract_amount:
+            return round((Decimal(self.actual_contract_amount) * Decimal(fee_type.default_percentage)) / Decimal('100.00'), 2)
+            
+        return Decimal('0.00')
 
     @property
     def admin_fee_paid(self):
@@ -596,9 +604,16 @@ class UnplannedExpense(models.Model):
 
     
     def get_fee_amount(self, fee_type_name):
-        """Helper to retrieve amount for a specific FeeType name."""
+        """Helper to retrieve amount for a specific FeeType name, falling back to default_percentage calculation if no specific fee record exists or if amount is 0."""
         fee = self.fees.filter(fee_type__name__iexact=fee_type_name).first()
-        return fee.amount if fee else Decimal('0.00')
+        if fee and fee.amount > 0:
+            return fee.amount
+        
+        fee_type = FeeType.objects.filter(name__iexact=fee_type_name).first()
+        if fee_type and fee_type.default_percentage > 0 and self.actual_contract_amount:
+            return round((Decimal(self.actual_contract_amount) * Decimal(fee_type.default_percentage)) / Decimal('100.00'), 2)
+            
+        return Decimal('0.00')
 
     @property
     def admin_fee_paid(self):
@@ -640,9 +655,16 @@ class ProjectMonitoringLog(models.Model):
 
     
     def get_fee_amount(self, fee_type_name):
-        """Helper to retrieve amount for a specific FeeType name."""
+        """Helper to retrieve amount for a specific FeeType name, falling back to default_percentage calculation if no specific fee record exists or if amount is 0."""
         fee = self.fees.filter(fee_type__name__iexact=fee_type_name).first()
-        return fee.amount if fee else Decimal('0.00')
+        if fee and fee.amount > 0:
+            return fee.amount
+        
+        fee_type = FeeType.objects.filter(name__iexact=fee_type_name).first()
+        if fee_type and fee_type.default_percentage > 0 and self.actual_contract_amount:
+            return round((Decimal(self.actual_contract_amount) * Decimal(fee_type.default_percentage)) / Decimal('100.00'), 2)
+            
+        return Decimal('0.00')
 
     @property
     def admin_fee_paid(self):
@@ -690,9 +712,16 @@ class ProjectMonitoringImage(models.Model):
 
     
     def get_fee_amount(self, fee_type_name):
-        """Helper to retrieve amount for a specific FeeType name."""
+        """Helper to retrieve amount for a specific FeeType name, falling back to default_percentage calculation if no specific fee record exists or if amount is 0."""
         fee = self.fees.filter(fee_type__name__iexact=fee_type_name).first()
-        return fee.amount if fee else Decimal('0.00')
+        if fee and fee.amount > 0:
+            return fee.amount
+        
+        fee_type = FeeType.objects.filter(name__iexact=fee_type_name).first()
+        if fee_type and fee_type.default_percentage > 0 and self.actual_contract_amount:
+            return round((Decimal(self.actual_contract_amount) * Decimal(fee_type.default_percentage)) / Decimal('100.00'), 2)
+            
+        return Decimal('0.00')
 
     @property
     def admin_fee_paid(self):
@@ -743,9 +772,16 @@ class ProjectActivityLog(models.Model):
 
     
     def get_fee_amount(self, fee_type_name):
-        """Helper to retrieve amount for a specific FeeType name."""
+        """Helper to retrieve amount for a specific FeeType name, falling back to default_percentage calculation if no specific fee record exists or if amount is 0."""
         fee = self.fees.filter(fee_type__name__iexact=fee_type_name).first()
-        return fee.amount if fee else Decimal('0.00')
+        if fee and fee.amount > 0:
+            return fee.amount
+        
+        fee_type = FeeType.objects.filter(name__iexact=fee_type_name).first()
+        if fee_type and fee_type.default_percentage > 0 and self.actual_contract_amount:
+            return round((Decimal(self.actual_contract_amount) * Decimal(fee_type.default_percentage)) / Decimal('100.00'), 2)
+            
+        return Decimal('0.00')
 
     @property
     def admin_fee_paid(self):
@@ -782,9 +818,16 @@ class ProjectPhaseComment(models.Model):
 
     
     def get_fee_amount(self, fee_type_name):
-        """Helper to retrieve amount for a specific FeeType name."""
+        """Helper to retrieve amount for a specific FeeType name, falling back to default_percentage calculation if no specific fee record exists or if amount is 0."""
         fee = self.fees.filter(fee_type__name__iexact=fee_type_name).first()
-        return fee.amount if fee else Decimal('0.00')
+        if fee and fee.amount > 0:
+            return fee.amount
+        
+        fee_type = FeeType.objects.filter(name__iexact=fee_type_name).first()
+        if fee_type and fee_type.default_percentage > 0 and self.actual_contract_amount:
+            return round((Decimal(self.actual_contract_amount) * Decimal(fee_type.default_percentage)) / Decimal('100.00'), 2)
+            
+        return Decimal('0.00')
 
     @property
     def admin_fee_paid(self):
