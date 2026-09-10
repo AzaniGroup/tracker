@@ -1,12 +1,9 @@
 from django.contrib import messages
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q
 from django.forms import modelformset_factory
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.generic import ListView, TemplateView, View
-
-from core.permissions import Level3RequiredMixin
 
 from .forms import CompanyForm, ComplianceRequirementForm, ComplianceUpdateForm, SubcontractorForm
 from .models import Company, CompanyCompliance, ComplianceRequirement, Subcontractor
@@ -81,12 +78,7 @@ class SubcontractorListView(ListView):
 
 
 def add_subcontractor(request):
-    if not (request.user.is_authenticated and (
-        request.user.is_superuser or
-        request.user.groups.filter(name__in=['Level 3', 'Level 4']).exists()
-    )):
-        messages.error(request, "You do not have permission to add subcontractors.")
-        return redirect('contractors:contractor_list')
+    
     if request.method == 'POST':
         form = SubcontractorForm(request.POST)  
         if form.is_valid():
@@ -101,13 +93,8 @@ def add_subcontractor(request):
                         'form':form })
 
 def edit_subcontractor(request, pk):
-    if not (request.user.is_authenticated and (
-        request.user.is_superuser or
-        request.user.groups.filter(name__in=['Level 3', 'Level 4']).exists()
-    )):
-        messages.error(request, "You do not have permission to edit subcontractors.")
-        return redirect('contractors:contractor_list')
     sub = get_object_or_404(Subcontractor, pk=pk)
+    
     if request.method == 'POST':
         form = SubcontractorForm(request.POST, instance=sub)
         if form.is_valid():
@@ -129,12 +116,6 @@ def edit_subcontractor(request, pk):
 
 
 def add_company(request):
-    if not (request.user.is_authenticated and (
-        request.user.is_superuser or
-        request.user.groups.filter(name__in=['Level 3', 'Level 4']).exists()
-    )):
-        messages.error(request, "You do not have permission to add companies.")
-        return redirect('contractors:company_list')
     if request.method == 'POST':
         form = CompanyForm(request.POST)
         if form.is_valid():
@@ -147,12 +128,6 @@ def add_company(request):
 
 
 def edit_company(request, pk):
-    if not (request.user.is_authenticated and (
-        request.user.is_superuser or
-        request.user.groups.filter(name__in=['Level 3', 'Level 4']).exists()
-    )):
-        messages.error(request, "You do not have permission to edit companies.")
-        return redirect('contractors:company_list')
     company = get_object_or_404(Company, pk=pk)
     if request.method == 'POST':
         form = CompanyForm(request.POST, instance=company)
@@ -169,12 +144,6 @@ def edit_company(request, pk):
 
 
 def delete_company(request, pk):
-    if not (request.user.is_authenticated and (
-        request.user.is_superuser or
-        request.user.groups.filter(name__in=['Level 3', 'Level 4']).exists()
-    )):
-        messages.error(request, "You do not have permission to delete companies.")
-        return redirect('contractors:company_list')
     company = get_object_or_404(Company, pk=pk)
     company.delete()
     messages.success(request, f"Company '{company.name}' deleted successfully.")
@@ -184,12 +153,6 @@ def delete_company(request, pk):
     return redirect('contractors:company_list')
 
 def delete_subcontractor(request, pk):
-    if not (request.user.is_authenticated and (
-        request.user.is_superuser or
-        request.user.groups.filter(name__in=['Level 3', 'Level 4']).exists()
-    )):
-        messages.error(request, "You do not have permission to delete subcontractors.")
-        return redirect('contractors:contractor_list')
     sub = get_object_or_404(Subcontractor, pk=pk)
     sub.delete()  
     messages.success(request, f"Subcontractor '{sub.name}' deleted successfully.")  
