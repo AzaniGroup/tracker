@@ -113,13 +113,24 @@
       </select>
     </div>
 
+    <!-- Supplementary / Budget Type filter -->
+    <div class="w-full md:w-44 flex-shrink-0">
+      <select name="is_supplementary"
+        class="w-full py-2 px-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#bfa12c] focus:border-[#bfa12c] bg-gray-50 truncate"
+        title="Filter by Budget Type">
+        <option value="">All Budget Types</option>
+        <option value="main" {% if selected_supplementary == 'main' or selected_supplementary == 'false' or selected_supplementary == '0' or selected_supplementary == 'no' %}selected{% endif %}>Main Budget</option>
+        <option value="supplementary" {% if selected_supplementary == 'supplementary' or selected_supplementary == 'true' or selected_supplementary == '1' or selected_supplementary == 'yes' or selected_supplementary == 'sup' %}selected{% endif %}>Supplementary Budget</option>
+      </select>
+    </div>
+
     <!-- Submit / Reset buttons -->
     <div class="flex items-center gap-2 w-full md:w-auto justify-end md:justify-start flex-shrink-0">
       <button type="submit"
         class="bg-[#3e5052] hover:bg-[#2c3a3c] text-white px-4 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap flex-1 md:flex-none text-center">
         Apply
       </button>
-      {% if q or selected_year or selected_mda or selected_category or selected_staff or selected_type or selected_awarded %}
+      {% if q or selected_year or selected_mda or selected_category or selected_staff or selected_type or selected_awarded or selected_supplementary %}
       <a href="{% url 'projects:project_list' %}"
         class="bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 px-4 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap flex items-center justify-center flex-1 md:flex-none">
         <span class="material-symbols-outlined text-sm mr-1">close</span> Clear
@@ -145,6 +156,11 @@
       {% endif %}
       {% if selected_mda %}
       <span class="bg-indigo-50 text-indigo-700 border border-indigo-200 px-2.5 py-0.5 rounded-full font-medium">MDA: {{ selected_mda_short|default:selected_mda|short_mda }}</span>
+      {% endif %}
+      {% if selected_supplementary == 'supplementary' or selected_supplementary == 'true' or selected_supplementary == '1' or selected_supplementary == 'sup' %}
+      <span class="bg-purple-50 text-purple-700 border border-purple-200 px-2.5 py-0.5 rounded-full font-medium">Budget: Supplementary</span>
+      {% elif selected_supplementary == 'main' or selected_supplementary == 'false' or selected_supplementary == '0' %}
+      <span class="bg-purple-50 text-purple-700 border border-purple-200 px-2.5 py-0.5 rounded-full font-medium">Budget: Main</span>
       {% endif %}
       {% if selected_category %}
       <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full font-medium">Category: {{ selected_category_display|default:selected_category }}</span>

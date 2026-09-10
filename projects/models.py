@@ -117,6 +117,7 @@ class Project(models.Model):
     payment_status = models.CharField(max_length=100, default="Pending", verbose_name="Payment Status")
     comments = models.TextField(blank=True, null=True, verbose_name="Comments")
     remarks = models.TextField(blank=True, null=True, verbose_name="Remarks")
+    is_supplementary = models.BooleanField(default=False, verbose_name="Is Supplementary Project")
 
     # --- Intermediary Link for Shared/Split Subcontracting ---
     subcontractors = models.ManyToManyField(

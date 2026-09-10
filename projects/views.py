@@ -38,6 +38,7 @@ class ProjectListView(LoginRequiredMixin, ListView):
         staff = self.request.GET.get('staff', '').strip()
         project_type = self.request.GET.get('project_type', '').strip()
         awarded = self.request.GET.get('awarded', '').strip().lower()
+        supplementary = (self.request.GET.get('is_supplementary') or self.request.GET.get('supplementary') or self.request.GET.get('sup') or '').strip().lower()
 
         if q:
             qs = qs.filter(
@@ -78,6 +79,10 @@ class ProjectListView(LoginRequiredMixin, ListView):
             qs = qs.filter(awarded_q).distinct()
         elif awarded in ['pre_award', 'awaiting', 'no', '0', 'false']:
             qs = qs.exclude(awarded_q).distinct()
+        if supplementary in ['supplementary', 'true', '1', 'yes', 'sup']:
+            qs = qs.filter(is_supplementary=True)
+        elif supplementary in ['main', 'false', '0', 'no']:
+            qs = qs.filter(is_supplementary=False)
 
         return qs
 
@@ -122,6 +127,7 @@ class ProjectListView(LoginRequiredMixin, ListView):
         context['selected_staff_display'] = staff_display
         context['selected_type'] = self.request.GET.get('project_type', '')
         context['selected_awarded'] = self.request.GET.get('awarded', '')
+        context['selected_supplementary'] = (self.request.GET.get('is_supplementary') or self.request.GET.get('supplementary') or self.request.GET.get('sup') or '').strip().lower()
 
         # Preserve filter parameters for pagination links
         get_copy = self.request.GET.copy()
@@ -824,6 +830,7 @@ def export_projects_excel(request):
     staff = request.GET.get('staff', '').strip()
     project_type = request.GET.get('project_type', '').strip()
     awarded = request.GET.get('awarded', '').strip().lower()
+    supplementary = (request.GET.get('is_supplementary') or request.GET.get('supplementary') or request.GET.get('sup') or '').strip().lower()
 
     if q:
         qs = qs.filter(Q(project_code__icontains=q) | Q(project_name__icontains=q))
@@ -899,6 +906,12 @@ def export_projects_excel(request):
     if project_type: filter_info.append(f"Type: {project_type}")
     if awarded in ['awarded', 'yes', '1', 'true']: filter_info.append("Status: Awarded Projects")
     elif awarded in ['pre_award', 'no', '0', 'false']: filter_info.append("Status: Pre-Award Projects")
+    if supplementary in ['supplementary', 'true', '1', 'yes', 'sup']:
+        qs = qs.filter(is_supplementary=True)
+        filter_info.append("Budget: Supplementary Projects")
+    elif supplementary in ['main', 'false', '0', 'no']:
+        qs = qs.filter(is_supplementary=False)
+        filter_info.append("Budget: Main Projects")
     if q: filter_info.append(f"Search: '{q}'")
     
     filter_str = " | ".join(filter_info) if filter_info else "All Projects (Unfiltered)"
