@@ -173,6 +173,14 @@
               {{ log.reported_execution_percentage }}%
             </span>
           </div>
+          {% if request.user.is_superuser or request.user|has_group:'Level 2' or request.user|has_group:'Level 3' or request.user|has_group:'Level 4' or log.reported_by == request.user %}
+          <form action="{% url 'projects:monitoring_log_delete' log.pk %}" method="POST" class="inline ml-2" onsubmit="return confirm('Are you sure you want to reverse/delete this progress report? Project progress percentage will automatically revert to the latest remaining report.');">
+            {% csrf_token %}
+            <button type="submit" class="inline-flex items-center text-xs text-red-600 hover:text-red-800 font-semibold bg-red-50 hover:bg-red-100 border border-red-200 px-2.5 py-1 rounded transition" title="Reverse / Delete Progress Log">
+              <span class="material-symbols-outlined text-xs mr-1">delete_sweep</span> Reverse Log
+            </button>
+          </form>
+          {% endif %}
         </div>
       </div>
 

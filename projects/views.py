@@ -1055,3 +1055,44 @@ class ProjectActivityLogListView(LoginRequiredMixin, ListView):
         return context
 
 
+
+
+class ProjectMonitoringLogDeleteView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        log_entry = get_object_or_404(ProjectMonitoringLog, pk=pk)
+        project = log_entry.project
+
+        # Check permissions: Superuser or Level 2, 3, 4, or author
+        can_delete = (
+            request.user.is_superuser or 
+            request.user.groups.filter(name__in=['Level 2', 'Level 3', 'Level 4']).exists() or
+            log_entry.reported_by == request.user
+        )
+        if not can_delete:
+            messages.error(request, "Permission denied. You do not have authorization to reverse/delete progress logs.")
+            return redirect('projects:project_detail', pk=project.pk)
+
+        old_pct = log_entry.reported_execution_percentage
+        log_entry.delete()
+
+        # Recalculate latest execution percentage from remaining logs
+        latest_log = project.monitoring_logs.order_by('-reported_at', '-id').first()
+        new_pct = latest_log.reported_execution_percentage if latest_log else 0
+
+        project.execution_level_percentage = new_pct
+        project.save(update_fields=['execution_level_percentage'])
+
+        log_project_activity(
+            project=project,
+            user=request.user,
+            action_type='MONITORING',
+            title=f"Progress Log Reversed ({old_pct}% -> {new_pct}%)",
+            description=f"Admin/User {request.user.username} reversed/deleted the progress report of {old_pct}%. Project progress reverted to {new_pct}%."
+        )
+
+        messages.success(request, f"Progress report reversed. Project completion reverted to {new_pct}%.")
+        
+        next_url = request.POST.get('next') or request.META.get('HTTP_REFERER')
+        if next_url:
+            return redirect(next_url)
+        return redirect('projects:project_detail', pk=project.pk)
