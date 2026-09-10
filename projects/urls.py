@@ -27,6 +27,8 @@ urlpatterns = [
     # Progress Monitoring routes
     path('<int:project_pk>/monitoring/create/', views.ProjectMonitoringLogCreateView.as_view(), name='monitoring_log_create'),
     path('monitoring/log/<int:pk>/delete/', views.ProjectMonitoringLogDeleteView.as_view(), name='monitoring_log_delete'),
+    path('monitoring/log/<int:pk>/add-images/', views.ProjectMonitoringImageAddView.as_view(), name='monitoring_log_add_images'),
+    path('monitoring/image/<int:pk>/delete/', views.ProjectMonitoringImageDeleteView.as_view(), name='monitoring_image_delete'),
     
     # Subcontractor payment tranche routes
     path('allocate/<int:allocation_pk>/tranche/create/', views.SubcontractorPaymentTrancheCreateView.as_view(), name='subcontractor_tranche_create'),

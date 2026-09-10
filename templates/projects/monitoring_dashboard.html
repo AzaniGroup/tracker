@@ -197,12 +197,34 @@
       <!-- Description content -->
       <p class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{{ log.description }}</p>
 
-      <!-- Photos Gallery (Grid) -->
-      {% if log.images.all %}
-      <div class="border-t border-gray-100 pt-4">
-        <span class="text-xs uppercase font-bold text-gray-400 block mb-2.5 flex items-center">
-          <span class="material-symbols-outlined text-xs mr-1">photo_library</span> Attached Photos / Evidence
-        </span>
+      <!-- Photos Gallery & Photo Management -->
+      <div class="border-t border-gray-100 pt-4" x-data="{ addPhotosOpen: false }">
+        <div class="flex items-center justify-between mb-2.5">
+          <span class="text-xs uppercase font-bold text-gray-400 flex items-center">
+            <span class="material-symbols-outlined text-xs mr-1">photo_library</span> Attached Photos / Evidence ({{ log.images.count }})
+          </span>
+          {% if request.user.is_superuser or request.user|has_group:'Level 2' or request.user|has_group:'Level 3' or request.user|has_group:'Level 4' or log.reported_by == request.user %}
+          <button type="button" @click="addPhotosOpen = !addPhotosOpen" class="text-xs font-semibold text-[#bfa12c] hover:underline flex items-center">
+            <span class="material-symbols-outlined text-xs mr-0.5" x-text="addPhotosOpen ? 'close' : 'add_a_photo'">add_a_photo</span>
+            <span x-text="addPhotosOpen ? 'Cancel' : '+ Add Photos'"></span>
+          </button>
+          {% endif %}
+        </div>
+
+        <!-- Inline Add Photos Form -->
+        {% if request.user.is_superuser or request.user|has_group:'Level 2' or request.user|has_group:'Level 3' or request.user|has_group:'Level 4' or log.reported_by == request.user %}
+        <div x-show="addPhotosOpen" x-collapse class="bg-gray-50 p-3 rounded-lg border border-gray-200 mb-3" style="display: none;">
+          <form action="{% url 'projects:monitoring_log_add_images' log.pk %}" method="POST" enctype="multipart/form-data" class="flex flex-col sm:flex-row items-center gap-2">
+            {% csrf_token %}
+            <input type="file" name="images" multiple accept="image/*" required class="text-xs text-gray-600 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-[#bfa12c] file:text-white hover:file:bg-[#a88d25] cursor-pointer">
+            <button type="submit" class="inline-flex items-center px-3 py-1 bg-[#bfa12c] hover:bg-[#a88d25] text-white text-xs font-bold rounded shadow-xs transition whitespace-nowrap">
+              <span class="material-symbols-outlined text-xs mr-1">upload</span> Upload Photos
+            </button>
+          </form>
+        </div>
+        {% endif %}
+
+        {% if log.images.all %}
         <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
           {% for img in log.images.all %}
           <div class="group relative rounded-xl border border-gray-200 overflow-hidden bg-white aspect-[4/3] shadow-sm">
@@ -210,14 +232,26 @@
             {% if img.caption %}
             <div class="absolute bottom-0 inset-x-0 bg-black bg-opacity-50 text-white text-[10px] p-1 truncate">{{ img.caption }}</div>
             {% endif %}
-            <a href="{{ img.image.url }}" target="_blank" class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-35 transition flex items-center justify-center text-white opacity-0 group-hover:opacity-100 font-semibold text-xs">
-              <span class="material-symbols-outlined text-sm mr-1">open_in_new</span> View Full
-            </a>
+            <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+              <a href="{{ img.image.url }}" target="_blank" class="p-1.5 bg-white bg-opacity-90 hover:bg-white text-gray-800 rounded-full shadow transition" title="View Full Image">
+                <span class="material-symbols-outlined text-sm block">open_in_new</span>
+              </a>
+              {% if request.user.is_superuser or request.user|has_group:'Level 2' or request.user|has_group:'Level 3' or request.user|has_group:'Level 4' or log.reported_by == request.user %}
+              <form action="{% url 'projects:monitoring_image_delete' img.pk %}" method="POST" class="inline" onsubmit="return confirm('Delete this evidence photo from the report?');">
+                {% csrf_token %}
+                <button type="submit" class="p-1.5 bg-red-600 hover:bg-red-700 text-white rounded-full shadow transition" title="Delete Photo">
+                  <span class="material-symbols-outlined text-sm block">delete</span>
+                </button>
+              </form>
+              {% endif %}
+            </div>
           </div>
           {% endfor %}
         </div>
+        {% else %}
+        <div class="text-xs text-gray-400 italic py-1">No photo evidence attached yet.</div>
+        {% endif %}
       </div>
-      {% endif %}
     </div>
     {% empty %}
     <div class="bg-white rounded-xl border border-gray-200 p-12 text-center text-gray-500 shadow-sm">

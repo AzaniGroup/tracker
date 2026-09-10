@@ -1096,3 +1096,78 @@ class ProjectMonitoringLogDeleteView(LoginRequiredMixin, View):
         if next_url:
             return redirect(next_url)
         return redirect('projects:project_detail', pk=project.pk)
+
+
+class ProjectMonitoringImageDeleteView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        image_entry = get_object_or_404(ProjectMonitoringImage, pk=pk)
+        log_entry = image_entry.monitoring_log
+        project = log_entry.project
+
+        can_manage = (
+            request.user.is_superuser or
+            request.user.groups.filter(name__in=['Level 2', 'Level 3', 'Level 4']).exists() or
+            log_entry.reported_by == request.user
+        )
+        if not can_manage:
+            messages.error(request, "Permission denied. You do not have authorization to remove photos from this log.")
+            return redirect('projects:project_detail', pk=project.pk)
+
+        if image_entry.image:
+            image_entry.image.delete(save=False)
+        image_entry.delete()
+
+        log_project_activity(
+            project=project,
+            user=request.user,
+            action_type='MONITORING',
+            title="Evidence Photo Removed",
+            description=f"Admin/User {request.user.username} deleted an evidence photo from the progress report ({log_entry.reported_execution_percentage}%)."
+        )
+
+        messages.success(request, "Evidence photo deleted successfully.")
+        next_url = request.POST.get('next') or request.META.get('HTTP_REFERER')
+        if next_url:
+            return redirect(next_url)
+        return redirect('projects:project_detail', pk=project.pk)
+
+
+class ProjectMonitoringImageAddView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        log_entry = get_object_or_404(ProjectMonitoringLog, pk=pk)
+        project = log_entry.project
+
+        can_manage = (
+            request.user.is_superuser or
+            request.user.groups.filter(name__in=['Level 2', 'Level 3', 'Level 4']).exists() or
+            log_entry.reported_by == request.user
+        )
+        if not can_manage:
+            messages.error(request, "Permission denied. You do not have authorization to add photos to this log.")
+            return redirect('projects:project_detail', pk=project.pk)
+
+        images = request.FILES.getlist('images')
+        count = 0
+        for img in images:
+            ProjectMonitoringImage.objects.create(
+                monitoring_log=log_entry,
+                image=img
+            )
+            count += 1
+
+        if count > 0:
+            log_project_activity(
+                project=project,
+                user=request.user,
+                action_type='MONITORING',
+                title=f"{count} Photo(s) Added to Progress Report",
+                description=f"Admin/User {request.user.username} uploaded {count} additional photo(s) to the progress report ({log_entry.reported_execution_percentage}%)."
+            )
+            messages.success(request, f"Successfully uploaded {count} photo(s).")
+        else:
+            messages.warning(request, "No image files were selected.")
+
+        next_url = request.POST.get('next') or request.META.get('HTTP_REFERER')
+        if next_url:
+            return redirect(next_url)
+        return redirect('projects:project_detail', pk=project.pk)
