@@ -180,6 +180,13 @@ class Project(models.Model):
             self.mda = self.parent_project.mda
             self.location = self.parent_project.location
             self.category = self.parent_project.category
+
+        # Auto-calculate Cost Percentage (In-House Benchmark / Actual Contract Amount or Budget Amount * 100)
+        from decimal import Decimal
+        base_amt = self.actual_contract_amount if (self.actual_contract_amount and self.actual_contract_amount > 0) else self.budget_amount
+        if base_amt and base_amt > 0 and self.in_house_benchmark:
+            self.cost_percentage = round((Decimal(self.in_house_benchmark) / Decimal(base_amt)) * Decimal('100.00'), 2)
+
         super().save(*args, **kwargs)
 
     class Meta:
