@@ -1,3 +1,4 @@
+from decimal import Decimal
 import re
 from django.db import models
 from contractors.models import Subcontractor
@@ -29,6 +30,24 @@ class ProjectCategory(models.Model):
         verbose_name_plural = "Project Categories"
         ordering = ['name']
 
+    
+    def get_fee_amount(self, fee_type_name):
+        """Helper to retrieve amount for a specific FeeType name."""
+        fee = self.fees.filter(fee_type__name__iexact=fee_type_name).first()
+        return fee.amount if fee else Decimal('0.00')
+
+    @property
+    def admin_fee_paid(self):
+        return self.get_fee_amount('Admin Fee')
+
+    @property
+    def facilitation_fee(self):
+        return self.get_fee_amount('Facilitation Fee (PR)')
+
+    @property
+    def logistics_and_monitoring_fee(self):
+        return self.get_fee_amount('Logistics & Monitoring')
+
     def __str__(self):
         return self.name
 
@@ -41,6 +60,24 @@ class FeeType(models.Model):
         verbose_name = "Fee Type"
         verbose_name_plural = "Fee Types"
         ordering = ['name']
+
+    
+    def get_fee_amount(self, fee_type_name):
+        """Helper to retrieve amount for a specific FeeType name."""
+        fee = self.fees.filter(fee_type__name__iexact=fee_type_name).first()
+        return fee.amount if fee else Decimal('0.00')
+
+    @property
+    def admin_fee_paid(self):
+        return self.get_fee_amount('Admin Fee')
+
+    @property
+    def facilitation_fee(self):
+        return self.get_fee_amount('Facilitation Fee (PR)')
+
+    @property
+    def logistics_and_monitoring_fee(self):
+        return self.get_fee_amount('Logistics & Monitoring')
 
     def __str__(self):
         return self.name
@@ -183,7 +220,6 @@ class Project(models.Model):
             self.category = self.parent_project.category
 
         # Auto-calculate Cost Percentage (In-House Benchmark / Actual Contract Amount or Budget Amount * 100)
-        from decimal import Decimal
         base_amt = self.actual_contract_amount if (self.actual_contract_amount and self.actual_contract_amount > 0) else self.budget_amount
         if base_amt and base_amt > 0 and self.in_house_benchmark:
             self.cost_percentage = round((Decimal(self.in_house_benchmark) / Decimal(base_amt)) * Decimal('100.00'), 2)
@@ -199,6 +235,24 @@ class Project(models.Model):
     def short_mda(self):
         """Return the MDA string stored in the mda column."""
         return self.mda
+
+    
+    def get_fee_amount(self, fee_type_name):
+        """Helper to retrieve amount for a specific FeeType name."""
+        fee = self.fees.filter(fee_type__name__iexact=fee_type_name).first()
+        return fee.amount if fee else Decimal('0.00')
+
+    @property
+    def admin_fee_paid(self):
+        return self.get_fee_amount('Admin Fee')
+
+    @property
+    def facilitation_fee(self):
+        return self.get_fee_amount('Facilitation Fee (PR)')
+
+    @property
+    def logistics_and_monitoring_fee(self):
+        return self.get_fee_amount('Logistics & Monitoring')
 
     def __str__(self):
         return f"{self.project_code} - {self.mda} - {self.project_name}"
@@ -323,6 +377,24 @@ class ProjectFee(models.Model):
         verbose_name = "Project Fee"
         verbose_name_plural = "Project Fees"
 
+    
+    def get_fee_amount(self, fee_type_name):
+        """Helper to retrieve amount for a specific FeeType name."""
+        fee = self.fees.filter(fee_type__name__iexact=fee_type_name).first()
+        return fee.amount if fee else Decimal('0.00')
+
+    @property
+    def admin_fee_paid(self):
+        return self.get_fee_amount('Admin Fee')
+
+    @property
+    def facilitation_fee(self):
+        return self.get_fee_amount('Facilitation Fee (PR)')
+
+    @property
+    def logistics_and_monitoring_fee(self):
+        return self.get_fee_amount('Logistics & Monitoring')
+
     def __str__(self):
         return f"{self.project.project_code} - {self.fee_type.name}: ₦{self.amount:,.2f} ({self.get_status_display()})"
 
@@ -347,6 +419,24 @@ class ProjectAllocation(models.Model):
         unique_together = ('project', 'subcontractor')
         verbose_name = "Project Subcontractor Allocation"
         verbose_name_plural = "Project Subcontractor Allocations"
+
+    
+    def get_fee_amount(self, fee_type_name):
+        """Helper to retrieve amount for a specific FeeType name."""
+        fee = self.fees.filter(fee_type__name__iexact=fee_type_name).first()
+        return fee.amount if fee else Decimal('0.00')
+
+    @property
+    def admin_fee_paid(self):
+        return self.get_fee_amount('Admin Fee')
+
+    @property
+    def facilitation_fee(self):
+        return self.get_fee_amount('Facilitation Fee (PR)')
+
+    @property
+    def logistics_and_monitoring_fee(self):
+        return self.get_fee_amount('Logistics & Monitoring')
 
     def __str__(self):
         return f"{self.project.project_code} assigned to {self.subcontractor.name}"
@@ -395,6 +485,24 @@ class SubcontractorPaymentTranche(models.Model):
         verbose_name = "Subcontractor Payment Tranche"
         verbose_name_plural = "Subcontractor Payment Tranches"
 
+    
+    def get_fee_amount(self, fee_type_name):
+        """Helper to retrieve amount for a specific FeeType name."""
+        fee = self.fees.filter(fee_type__name__iexact=fee_type_name).first()
+        return fee.amount if fee else Decimal('0.00')
+
+    @property
+    def admin_fee_paid(self):
+        return self.get_fee_amount('Admin Fee')
+
+    @property
+    def facilitation_fee(self):
+        return self.get_fee_amount('Facilitation Fee (PR)')
+
+    @property
+    def logistics_and_monitoring_fee(self):
+        return self.get_fee_amount('Logistics & Monitoring')
+
     def __str__(self):
         return f"{self.allocation.subcontractor.name} - ₦{self.amount:,.2f} on {self.date_paid}"
 
@@ -426,6 +534,24 @@ class ProjectLifecycleStage(models.Model):
     class Meta:
         ordering = ['sequence_order']
         unique_together = ('project', 'stage_name')
+
+    
+    def get_fee_amount(self, fee_type_name):
+        """Helper to retrieve amount for a specific FeeType name."""
+        fee = self.fees.filter(fee_type__name__iexact=fee_type_name).first()
+        return fee.amount if fee else Decimal('0.00')
+
+    @property
+    def admin_fee_paid(self):
+        return self.get_fee_amount('Admin Fee')
+
+    @property
+    def facilitation_fee(self):
+        return self.get_fee_amount('Facilitation Fee (PR)')
+
+    @property
+    def logistics_and_monitoring_fee(self):
+        return self.get_fee_amount('Logistics & Monitoring')
 
     def __str__(self):
         return f"{self.project.project_name} - Step {self.sequence_order}: {self.stage_name} [{'Done' if self.is_completed else 'Pending'}]"
@@ -468,6 +594,24 @@ class UnplannedExpense(models.Model):
         verbose_name = "Unplanned Expense"
         verbose_name_plural = "Unplanned Expenses"
 
+    
+    def get_fee_amount(self, fee_type_name):
+        """Helper to retrieve amount for a specific FeeType name."""
+        fee = self.fees.filter(fee_type__name__iexact=fee_type_name).first()
+        return fee.amount if fee else Decimal('0.00')
+
+    @property
+    def admin_fee_paid(self):
+        return self.get_fee_amount('Admin Fee')
+
+    @property
+    def facilitation_fee(self):
+        return self.get_fee_amount('Facilitation Fee (PR)')
+
+    @property
+    def logistics_and_monitoring_fee(self):
+        return self.get_fee_amount('Logistics & Monitoring')
+
     def __str__(self):
         return f"{self.project.project_code} — {self.description} (₦{self.amount:,.2f})"
 
@@ -493,6 +637,24 @@ class ProjectMonitoringLog(models.Model):
         ordering = ['-reported_at']
         verbose_name = "Project Monitoring Log"
         verbose_name_plural = "Project Monitoring Logs"
+
+    
+    def get_fee_amount(self, fee_type_name):
+        """Helper to retrieve amount for a specific FeeType name."""
+        fee = self.fees.filter(fee_type__name__iexact=fee_type_name).first()
+        return fee.amount if fee else Decimal('0.00')
+
+    @property
+    def admin_fee_paid(self):
+        return self.get_fee_amount('Admin Fee')
+
+    @property
+    def facilitation_fee(self):
+        return self.get_fee_amount('Facilitation Fee (PR)')
+
+    @property
+    def logistics_and_monitoring_fee(self):
+        return self.get_fee_amount('Logistics & Monitoring')
 
     def __str__(self):
         return f"{self.project.project_code} - {self.reported_execution_percentage}% on {self.start_date}"
@@ -525,6 +687,24 @@ class ProjectMonitoringImage(models.Model):
     class Meta:
         verbose_name = "Project Monitoring Image"
         verbose_name_plural = "Project Monitoring Images"
+
+    
+    def get_fee_amount(self, fee_type_name):
+        """Helper to retrieve amount for a specific FeeType name."""
+        fee = self.fees.filter(fee_type__name__iexact=fee_type_name).first()
+        return fee.amount if fee else Decimal('0.00')
+
+    @property
+    def admin_fee_paid(self):
+        return self.get_fee_amount('Admin Fee')
+
+    @property
+    def facilitation_fee(self):
+        return self.get_fee_amount('Facilitation Fee (PR)')
+
+    @property
+    def logistics_and_monitoring_fee(self):
+        return self.get_fee_amount('Logistics & Monitoring')
 
     def __str__(self):
         return f"Image for {self.monitoring_log.project.project_code} log on {self.monitoring_log.start_date}"
@@ -561,6 +741,24 @@ class ProjectActivityLog(models.Model):
         verbose_name = "Project Activity Log"
         verbose_name_plural = "Project Activity Logs"
 
+    
+    def get_fee_amount(self, fee_type_name):
+        """Helper to retrieve amount for a specific FeeType name."""
+        fee = self.fees.filter(fee_type__name__iexact=fee_type_name).first()
+        return fee.amount if fee else Decimal('0.00')
+
+    @property
+    def admin_fee_paid(self):
+        return self.get_fee_amount('Admin Fee')
+
+    @property
+    def facilitation_fee(self):
+        return self.get_fee_amount('Facilitation Fee (PR)')
+
+    @property
+    def logistics_and_monitoring_fee(self):
+        return self.get_fee_amount('Logistics & Monitoring')
+
     def __str__(self):
         user_str = self.user.username if self.user else "System"
         return f"[{self.get_action_type_display()}] {self.project.project_code} by {user_str} on {self.created_at.strftime('%Y-%m-%d %H:%M')}"
@@ -582,7 +780,24 @@ class ProjectPhaseComment(models.Model):
         verbose_name = "Project Phase Comment"
         verbose_name_plural = "Project Phase Comments"
 
+    
+    def get_fee_amount(self, fee_type_name):
+        """Helper to retrieve amount for a specific FeeType name."""
+        fee = self.fees.filter(fee_type__name__iexact=fee_type_name).first()
+        return fee.amount if fee else Decimal('0.00')
+
+    @property
+    def admin_fee_paid(self):
+        return self.get_fee_amount('Admin Fee')
+
+    @property
+    def facilitation_fee(self):
+        return self.get_fee_amount('Facilitation Fee (PR)')
+
+    @property
+    def logistics_and_monitoring_fee(self):
+        return self.get_fee_amount('Logistics & Monitoring')
+
     def __str__(self):
         author_str = self.author.username if self.author else "System"
         return f"{self.project.project_code} [{self.get_phase_display()}] note by {author_str} on {self.created_at.strftime('%Y-%m-%d %H:%M')}"
-
