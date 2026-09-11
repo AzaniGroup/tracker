@@ -69,3 +69,12 @@ static
 # WSGI config file
 material_logistics/wsgi.py
 
+
+# Temporary migration files
+neon_data.json
+migrate_data.py
+
+# Environments
+venv/
+.env
+

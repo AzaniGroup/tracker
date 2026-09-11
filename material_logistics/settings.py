@@ -139,11 +139,20 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATIC_DIR = BASE_DIR / 'static'
-if STATIC_DIR.exists():
-    STATICFILES_DIRS = [STATIC_DIR]
+STATICFILES_DIRS = [BASE_DIR / 'static']
+
+# WhiteNoise storage for compressed and cached static files
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+
 
 # Login redirect URL
 LOGIN_REDIRECT_URL = 'core:dashboard'
@@ -156,4 +165,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Media files (Uploaded uploads/photos)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# Resend Email Configuration
+RESEND_API_KEY = os.getenv('RESEND_API_KEY', '')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Azani Logistics <onboarding@resend.dev>')
+
+# Two-Factor Authentication (OTP) Settings
+OTP_EXPIRY_MINUTES = int(os.getenv('OTP_EXPIRY_MINUTES', '10'))
+OTP_MAX_ATTEMPTS = int(os.getenv('OTP_MAX_ATTEMPTS', '5'))
 

@@ -1,34 +1,191 @@
+import openpyxl
 from decimal import Decimal
+from datetime import timedelta
+from django.conf import settings
 from django.contrib import messages     
+from django.contrib.auth import get_user_model, login as auth_login, logout as auth_logout
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.views import LoginView as BaseLoginView
+from django.db.models import Sum, F, Q
+from django.http import HttpResponse
+from django.shortcuts import redirect, get_object_or_404, render
+from django.urls import reverse_lazy
+from django.utils import timezone
+from django.views import View
 from django.views.generic import (
     TemplateView,
     ListView,
     CreateView,
     UpdateView,
     DeleteView,
-    View,
 )
-from django.shortcuts import redirect, get_object_or_404, render
-from django.urls import reverse_lazy
-from projects.models import Project
-from django.db.models import Sum, F, Q
-from django.utils import timezone
-from datetime import timedelta
-from django.http import HttpResponse
-import openpyxl
 
 from projects.models import ProjectLifecycleStage, Project, UnplannedExpense
 from logistic.models import MilestoneCashRequest
+from users.models import UserOTP
+from core.services.email_service import send_otp_email
+
+User = get_user_model()
+
+
+def mask_email(email: str) -> str:
+    """Masks an email address for privacy (e.g. dama@azanigroup.com.ng -> d***@azanigroup.com.ng)."""
+    if not email or '@' not in email:
+        return email or ''
+    user_part, domain_part = email.split('@', 1)
+    if len(user_part) <= 2:
+        masked_user = user_part[0] + '***'
+    else:
+        masked_user = user_part[0] + '*' * (len(user_part) - 2) + user_part[-1]
+    return f"{masked_user}@{domain_part}"
+
+
+class CustomLoginView(BaseLoginView):
+    """
+    Handles user login. If user has 2FA enabled:
+    - Sets pre-2FA session state.
+    - Generates a single-use 6-digit OTP and emails it via Resend.
+    - Redirects user to OTP verification screen.
+    If 2FA is disabled, logs in immediately.
+    """
+    template_name = 'registration/login.html'
+
+    def form_valid(self, form):
+        user = form.get_user()
+        remember_me = self.request.POST.get('remember-me') == 'on'
+
+        profile = getattr(user, 'profile', None)
+        if profile and profile.is_2fa_enabled and user.email:
+            # Setup session for OTP step
+            self.request.session['pre_2fa_user_id'] = user.pk
+            self.request.session['pre_2fa_remember_me'] = remember_me
+            self.request.session['pre_2fa_next'] = self.get_redirect_url() or ''
+
+            # Generate single-use OTP (invalidating previous ones)
+            otp = UserOTP.generate_otp(user)
+
+            # Send OTP email
+            try:
+                send_otp_email(user, otp.code)
+            except Exception:
+                pass
+
+            messages.info(
+                self.request,
+                f"Two-Factor Authentication is active. A single-use verification code has been sent to {mask_email(user.email)}."
+            )
+            return redirect('core:verify_otp')
+
+        # Standard login
+        auth_login(self.request, user)
+        if not remember_me:
+            self.request.session.set_expiry(0)
+        else:
+            self.request.session.set_expiry(1209600)
+
+        return redirect(self.get_success_url())
+
+
+class VerifyOTPView(View):
+    """
+    Verifies single-use OTP codes for 2FA login.
+    """
+    template_name = 'registration/verify_otp.html'
+
+    def get(self, request):
+        user_id = request.session.get('pre_2fa_user_id')
+        if not user_id:
+            return redirect('core:login')
+
+        try:
+            user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            request.session.pop('pre_2fa_user_id', None)
+            return redirect('core:login')
+
+        context = {
+            'masked_email': mask_email(user.email),
+            'user': user,
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request):
+        user_id = request.session.get('pre_2fa_user_id')
+        if not user_id:
+            messages.error(request, "Session expired. Please sign in again.")
+            return redirect('core:login')
+
+        try:
+            user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            request.session.pop('pre_2fa_user_id', None)
+            return redirect('core:login')
+
+        otp_code = request.POST.get('otp_code', '').strip()
+        if not otp_code:
+            messages.error(request, "Please enter your 6-digit verification code.")
+            return render(request, self.template_name, {'masked_email': mask_email(user.email), 'user': user})
+
+        success, status_msg = UserOTP.verify_code(user, otp_code)
+        if success:
+            # Log the user in
+            auth_login(request, user)
+            remember_me = request.session.pop('pre_2fa_remember_me', False)
+            if not remember_me:
+                request.session.set_expiry(0)
+            else:
+                request.session.set_expiry(1209600)
+
+            next_url = request.session.pop('pre_2fa_next', '')
+            request.session.pop('pre_2fa_user_id', None)
+
+            messages.success(request, f"Welcome back, {user.get_full_name() or user.username}!")
+            if next_url:
+                return redirect(next_url)
+            return redirect(settings.LOGIN_REDIRECT_URL)
+
+        messages.error(request, status_msg)
+        return render(request, self.template_name, {'masked_email': mask_email(user.email), 'user': user})
+
+
+class ResendOTPView(View):
+    """
+    Generates a new single-use OTP and sends an email via Resend.
+    """
+    def post(self, request):
+        user_id = request.session.get('pre_2fa_user_id')
+        if not user_id:
+            messages.error(request, "Session expired. Please sign in again.")
+            return redirect('core:login')
+
+        try:
+            user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            request.session.pop('pre_2fa_user_id', None)
+            return redirect('core:login')
+
+        if not user.email:
+            messages.error(request, "No registered email address found for your account.")
+            return redirect('core:verify_otp')
+
+        # Invalidate old OTPs and generate fresh code
+        otp = UserOTP.generate_otp(user)
+        try:
+            send_otp_email(user, otp.code)
+            messages.success(request, f"A new verification code was sent to {mask_email(user.email)}.")
+        except Exception:
+            messages.error(request, "Could not send email at this time. Please try again.")
+
+        return redirect('core:verify_otp')
 
 
 def logout_view(request):
     """Log out the user and redirect to login page.
     Accepts GET requests to avoid 405 errors.
     """
-    from django.contrib.auth import logout
-    logout(request)
+    auth_logout(request)
     return redirect('core:login')
+
 
 
 
