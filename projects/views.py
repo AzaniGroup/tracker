@@ -576,17 +576,38 @@ class ProjectMonitoringDashboardView(LoginRequiredMixin, View):
     template_name = 'projects/monitoring_dashboard.html'
 
     def get(self, request):
-        project_id = request.GET.get('project')
-        logs_qs = ProjectMonitoringLog.objects.all().prefetch_related('images').select_related('project', 'reported_by')
+        project_id = (request.GET.get('project') or '').strip()
+        q = (request.GET.get('q') or '').strip()
+
+        logs_qs = ProjectMonitoringLog.objects.all().prefetch_related('images').select_related(
+            'project', 'project__category', 'reported_by'
+        )
         selected_project = None
         if project_id and project_id != '0':
-            logs_qs = logs_qs.filter(project_id=project_id)
-            selected_project = get_object_or_404(Project, pk=project_id)
+            selected_project = Project.objects.filter(pk=project_id).first()
+            if selected_project:
+                logs_qs = logs_qs.filter(project_id=project_id)
+
+        if q:
+            logs_qs = logs_qs.filter(
+                Q(project__project_name__icontains=q) |
+                Q(project__project_code__icontains=q) |
+                Q(project__mda__icontains=q) |
+                Q(project__state__icontains=q) |
+                Q(project__lga__icontains=q) |
+                Q(description__icontains=q) |
+                Q(reported_by__username__icontains=q) |
+                Q(reported_by__first_name__icontains=q) |
+                Q(reported_by__last_name__icontains=q)
+            )
 
         context = {
             'logs': logs_qs.order_by('-reported_at'),
-            'projects': Project.objects.all(),
+            'projects': Project.objects.all().order_by('project_code', 'project_name'),
             'selected_project': selected_project,
+            'selected_project_id': project_id if (selected_project and project_id != '0') else '',
+            'q': q,
+            'total_logs_count': logs_qs.count(),
             'monitoring_form': ProjectMonitoringLogGlobalForm(),
         }
         return render(request, self.template_name, context)

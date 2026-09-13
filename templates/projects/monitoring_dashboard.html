@@ -108,26 +108,84 @@
   </div>
   {% endif %}
 
-  <!-- Filter Bar -->
-  <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-    <div>
-      <h2 class="text-xs font-bold text-gray-500 uppercase">Filter Feed by Project</h2>
-    </div>
-    <form method="GET" action="" class="flex items-center shadow-sm w-full md:w-80">
-      <select name="project" onchange="this.form.submit()" class="bg-white border border-slate-300 text-slate-800 text-sm rounded-lg focus:ring-[#bfa12c] focus:border-[#bfa12c] block w-full px-3 py-2 cursor-pointer transition hover:border-slate-400 font-medium">
-        <option value="0">-- Show All Projects --</option>
-        {% for p in projects %}
-        <option value="{{ p.pk }}" {% if selected_project and selected_project.pk == p.pk %}selected{% endif %}>[{{ p.project_code }}] {{ p.project_name }}</option>
-        {% endfor %}
-      </select>
+  <!-- Search and Filter Bar -->
+  <div class="bg-white p-4 sm:p-5 rounded-xl border border-gray-200 shadow-sm space-y-3">
+    <form method="GET" action="{% url 'projects:monitoring_dashboard' %}" class="flex flex-col md:flex-row items-stretch md:items-center gap-3">
+      <!-- Search Input -->
+      <div class="relative flex-1">
+        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+          <span class="material-symbols-outlined text-gray-400 text-lg">search</span>
+        </div>
+        <input type="text" name="q" value="{{ q }}" placeholder="Search logs by keyword, project code, name, engineer, observations..."
+          class="bg-gray-50 hover:bg-white focus:bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#bfa12c] focus:border-[#bfa12c] block w-full pl-10 pr-10 py-2.5 transition">
+        {% if q %}
+        <a href="?{% if selected_project_id %}project={{ selected_project_id }}{% endif %}" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600" title="Clear text search">
+          <span class="material-symbols-outlined text-base">cancel</span>
+        </a>
+        {% endif %}
+      </div>
+
+      <!-- Project Filter Dropdown -->
+      <div class="w-full md:w-80">
+        <select name="project" onchange="this.form.submit()"
+          class="bg-gray-50 hover:bg-white focus:bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#bfa12c] focus:border-[#bfa12c] block w-full px-3 py-2.5 cursor-pointer transition font-medium">
+          <option value="0">-- All Projects --</option>
+          {% for p in projects %}
+          <option value="{{ p.pk }}" {% if selected_project_id == p.pk|stringformat:"s" or selected_project.pk == p.pk %}selected{% endif %}>
+            [{{ p.project_code }}] {{ p.project_name|truncatechars:35 }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Submit & Reset Buttons -->
+      <div class="flex items-center gap-2">
+        <button type="submit"
+          class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition flex items-center justify-center shrink-0">
+          <span class="material-symbols-outlined text-base mr-1">search</span> Search
+        </button>
+
+        {% if q or selected_project %}
+        <a href="{% url 'projects:monitoring_dashboard' %}"
+          class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2.5 rounded-lg text-sm font-semibold transition flex items-center justify-center shrink-0"
+          title="Reset all filters">
+          <span class="material-symbols-outlined text-base mr-1">restart_alt</span> Reset
+        </a>
+        {% endif %}
+      </div>
     </form>
-    {% if selected_project %}
-    <div class="pt-1">
-      <a href="{% url 'projects:monitoring_dashboard' %}" class="inline-flex items-center text-gray-500 hover:text-[#bfa12c] font-semibold text-xs py-2">
-        <span class="material-symbols-outlined text-xs mr-1">close</span> Clear Filter
+
+    <!-- Active Filters & Result Count Summary -->
+    <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-gray-100 text-xs text-gray-500">
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="font-semibold text-gray-700">Results:</span>
+        <span class="bg-gray-100 text-gray-700 px-2.5 py-0.5 rounded-full font-medium">{{ total_logs_count }} log{{ total_logs_count|pluralize }}</span>
+
+        {% if q %}
+        <span class="inline-flex items-center bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-0.5 rounded-full font-medium">
+          Keyword: "{{ q }}"
+          <a href="?{% if selected_project_id %}project={{ selected_project_id }}{% endif %}" class="ml-1 text-amber-600 hover:text-amber-900">
+            <span class="material-symbols-outlined text-xs align-middle">close</span>
+          </a>
+        </span>
+        {% endif %}
+
+        {% if selected_project %}
+        <span class="inline-flex items-center bg-blue-50 text-blue-800 border border-blue-200 px-2.5 py-0.5 rounded-full font-medium">
+          Project: [{{ selected_project.project_code }}] {{ selected_project.project_name|truncatechars:25 }}
+          <a href="?{% if q %}q={{ q|urlencode }}{% endif %}" class="ml-1 text-blue-600 hover:text-blue-900">
+            <span class="material-symbols-outlined text-xs align-middle">close</span>
+          </a>
+        </span>
+        {% endif %}
+      </div>
+
+      {% if q or selected_project %}
+      <a href="{% url 'projects:monitoring_dashboard' %}" class="text-[#bfa12c] hover:underline font-semibold text-xs">
+        Clear all filters
       </a>
+      {% endif %}
     </div>
-    {% endif %}
   </div>
 
   <!-- Main Feed Area -->
@@ -255,10 +313,28 @@
       </div>
     </div>
     {% empty %}
-    <div class="bg-white rounded-xl border border-gray-200 p-12 text-center text-gray-500 shadow-sm">
-      <span class="material-symbols-outlined text-5xl text-gray-300 mb-2">insights</span>
-      <h3 class="text-base font-bold text-gray-700">No progress logs found</h3>
-      <p class="text-sm text-gray-400 mt-1">{% if selected_project %}No progress reports have been submitted for this specific project yet.{% else %}No progress reports or supporting evidence have been uploaded across any projects yet.{% endif %}</p>
+    <div class="bg-white rounded-xl border border-gray-200 p-12 text-center text-gray-500 shadow-sm space-y-3">
+      <span class="material-symbols-outlined text-5xl text-gray-300">manage_search</span>
+      <h3 class="text-base font-bold text-gray-800">No progress logs found</h3>
+      <p class="text-sm text-gray-500 max-w-md mx-auto">
+        {% if q and selected_project %}
+          No logs found matching <span class="font-semibold text-gray-700">"{{ q }}"</span> for project <span class="font-semibold text-gray-700">[{{ selected_project.project_code }}] {{ selected_project.project_name }}</span>.
+        {% elif q %}
+          No logs found matching <span class="font-semibold text-gray-700">"{{ q }}"</span> across any projects.
+        {% elif selected_project %}
+          No progress reports have been submitted for project <span class="font-semibold text-gray-700">[{{ selected_project.project_code }}] {{ selected_project.project_name }}</span> yet.
+        {% else %}
+          No progress reports or site evidence have been uploaded across any projects yet.
+        {% endif %}
+      </p>
+      {% if q or selected_project %}
+      <div class="pt-2">
+        <a href="{% url 'projects:monitoring_dashboard' %}"
+          class="inline-flex items-center bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-xs font-semibold transition">
+          <span class="material-symbols-outlined text-xs mr-1">filter_alt_off</span> Reset Search & Filters
+        </a>
+      </div>
+      {% endif %}
     </div>
     {% endfor %}
   </div>
