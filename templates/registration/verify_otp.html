@@ -1,4 +1,4 @@
-﻿{% load static %}
+{% load static %}
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
 
@@ -218,7 +218,12 @@
                 <span class="material-symbols-outlined text-sm mr-1">refresh</span>
                 Resend New Code
               </button>
-              <span id="countdown-text" class="text-xs text-gray-400 hidden"></span>
+              <div id="countdown-wrapper" class="hidden">
+                <span class="inline-flex items-center text-xs text-gray-400 font-medium bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200">
+                  <span class="material-symbols-outlined text-sm mr-1.5 text-gray-400">hourglass_top</span>
+                  Resend code in <strong id="countdown-timer" class="text-gray-700 ml-1">60s</strong>
+                </span>
+              </div>
             </form>
           </div>
 
@@ -255,67 +260,81 @@
 
     const otpInput = document.getElementById('otp_code');
     if (otpInput) {
-      // Auto strip non-digit characters
       otpInput.addEventListener('input', (e) => {
         e.target.value = e.target.value.replace(/[^0-9]/g, '');
-        if (e.target.value.length === 6) {
-          // Optional auto-submit when 6 digits are typed
-        }
       });
     }
 
-    // Resend cooldown timer logic
+    // Precise Resend 60s cooldown timer logic synchronized with server
+    const serverCooldown = parseInt('{{ cooldown_remaining|default:0 }}', 10);
     const resendBtn = document.getElementById('resend-btn');
-    const countdownText = document.getElementById('countdown-text');
+    const countdownWrapper = document.getElementById('countdown-wrapper');
+    const countdownTimer = document.getElementById('countdown-timer');
     const COOLDOWN_KEY = 'azani_otp_cooldown_expiry';
+    let timerInterval = null;
 
-    function checkCooldown() {
-      const expiry = localStorage.getItem(COOLDOWN_KEY);
-      if (expiry) {
-        const remaining = Math.ceil((parseInt(expiry, 10) - Date.now()) / 1000);
-        if (remaining > 0) {
-          disableResend(remaining);
-          return;
-        } else {
-          localStorage.removeItem(COOLDOWN_KEY);
+    function initCooldown() {
+      const now = Date.now();
+      let remaining = 0;
+
+      // 1. Check if server specified active cooldown
+      if (serverCooldown > 0) {
+        remaining = serverCooldown;
+        localStorage.setItem(COOLDOWN_KEY, now + (serverCooldown * 1000));
+      } else {
+        // 2. Check if localStorage has an unexpired cooldown
+        const localExpiry = localStorage.getItem(COOLDOWN_KEY);
+        if (localExpiry) {
+          const diff = Math.ceil((parseInt(localExpiry, 10) - now) / 1000);
+          if (diff > 0) {
+            remaining = diff;
+          } else {
+            localStorage.removeItem(COOLDOWN_KEY);
+          }
         }
       }
-      enableResend();
+
+      if (remaining > 0) {
+        startTimer(remaining);
+      } else {
+        showResendButton();
+      }
     }
 
-    function disableResend(seconds) {
-      if (!resendBtn || !countdownText) return;
-      resendBtn.classList.add('hidden');
-      countdownText.classList.remove('hidden');
-      countdownText.textContent = `Please wait ${seconds}s to resend code`;
+    function startTimer(seconds) {
+      if (timerInterval) clearInterval(timerInterval);
+      if (!resendBtn || !countdownWrapper || !countdownTimer) return;
 
-      const interval = setInterval(() => {
+      resendBtn.classList.add('hidden');
+      countdownWrapper.classList.remove('hidden');
+      countdownTimer.textContent = `${seconds}s`;
+
+      timerInterval = setInterval(() => {
         seconds--;
         if (seconds <= 0) {
-          clearInterval(interval);
+          clearInterval(timerInterval);
           localStorage.removeItem(COOLDOWN_KEY);
-          enableResend();
+          showResendButton();
         } else {
-          countdownText.textContent = `Please wait ${seconds}s to resend code`;
+          countdownTimer.textContent = `${seconds}s`;
         }
       }, 1000);
     }
 
-    function enableResend() {
-      if (!resendBtn || !countdownText) return;
+    function showResendButton() {
+      if (!resendBtn || !countdownWrapper) return;
       resendBtn.classList.remove('hidden');
-      countdownText.classList.add('hidden');
+      countdownWrapper.classList.add('hidden');
     }
 
     const resendForm = document.getElementById('resend-form');
     if (resendForm) {
       resendForm.addEventListener('submit', () => {
-        // Set 45s cooldown on submit
-        localStorage.setItem(COOLDOWN_KEY, Date.now() + 45000);
+        localStorage.setItem(COOLDOWN_KEY, Date.now() + 60000);
       });
     }
 
-    checkCooldown();
+    initCooldown();
   </script>
 
 </body>

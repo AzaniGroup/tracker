@@ -83,6 +83,17 @@ class CustomLoginView(BaseLoginView):
         return redirect(self.get_success_url())
 
 
+def get_otp_cooldown_remaining(user) -> int:
+    """Returns the remaining seconds in the 60-second OTP cooldown, or 0 if cooldown expired."""
+    last_otp = UserOTP.objects.filter(user=user).order_by('-created_at').first()
+    if last_otp:
+        elapsed = (timezone.now() - last_otp.created_at).total_seconds()
+        cooldown = 60
+        if elapsed < cooldown:
+            return max(1, int(cooldown - elapsed))
+    return 0
+
+
 class VerifyOTPView(View):
     """
     Verifies single-use OTP codes for 2FA login.
@@ -103,6 +114,7 @@ class VerifyOTPView(View):
         context = {
             'masked_email': mask_email(user.email),
             'user': user,
+            'cooldown_remaining': get_otp_cooldown_remaining(user),
         }
         return render(request, self.template_name, context)
 
@@ -121,7 +133,11 @@ class VerifyOTPView(View):
         otp_code = request.POST.get('otp_code', '').strip()
         if not otp_code:
             messages.error(request, "Please enter your 6-digit verification code.")
-            return render(request, self.template_name, {'masked_email': mask_email(user.email), 'user': user})
+            return render(request, self.template_name, {
+                'masked_email': mask_email(user.email),
+                'user': user,
+                'cooldown_remaining': get_otp_cooldown_remaining(user)
+            })
 
         success, status_msg = UserOTP.verify_code(user, otp_code)
         if success:
@@ -142,13 +158,17 @@ class VerifyOTPView(View):
             return redirect(settings.LOGIN_REDIRECT_URL)
 
         messages.error(request, status_msg)
-        return render(request, self.template_name, {'masked_email': mask_email(user.email), 'user': user})
+        return render(request, self.template_name, {
+            'masked_email': mask_email(user.email),
+            'user': user,
+            'cooldown_remaining': get_otp_cooldown_remaining(user)
+        })
 
 
 class ResendOTPView(View):
     """
     Generates a new single-use OTP and sends an email via Resend.
-    Includes a 45-second cooldown to prevent flooding.
+    Includes a 60-second cooldown to prevent flooding.
     """
     def post(self, request):
         user_id = request.session.get('pre_2fa_user_id')
@@ -166,10 +186,10 @@ class ResendOTPView(View):
             messages.error(request, "No registered email address found for your account.")
             return redirect('core:verify_otp')
 
-        # Check cooldown (45 seconds between requests)
+        # Check cooldown (60 seconds between requests)
         last_otp = UserOTP.objects.filter(user=user).order_by('-created_at').first()
-        if last_otp and (timezone.now() - last_otp.created_at).total_seconds() < 45:
-            remaining_secs = int(45 - (timezone.now() - last_otp.created_at).total_seconds())
+        if last_otp and (timezone.now() - last_otp.created_at).total_seconds() < 60:
+            remaining_secs = int(60 - (timezone.now() - last_otp.created_at).total_seconds())
             messages.warning(request, f"Please wait {remaining_secs} second(s) before requesting another code.")
             return redirect('core:verify_otp')
 
