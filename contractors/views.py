@@ -1,9 +1,12 @@
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.forms import modelformset_factory
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.decorators.http import require_POST
 from django.views.generic import ListView, TemplateView, View
 from urllib.parse import urlencode
 
@@ -159,7 +162,7 @@ def edit_company(request, pk):
             form.save()
             messages.success(request, f"Company '{company.name}' updated successfully.")
             next_url = request.POST.get('next') or request.META.get('HTTP_REFERER')
-            if next_url:
+            if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
                 return redirect(next_url)
             return redirect('contractors:company_list')
     else:
@@ -167,33 +170,38 @@ def edit_company(request, pk):
     return render(request, 'contractors/edit_company.html', {'page_title': 'Edit Company', 'company': company, 'form': form})
 
 
+@login_required
+@require_POST
 def delete_company(request, pk):
-    if not (request.user.is_authenticated and (
+    if not (
         request.user.is_superuser or
         request.user.groups.filter(name__in=['Level 3', 'Level 4']).exists()
-    )):
+    ):
         messages.error(request, "You do not have permission to delete companies.")
         return redirect('contractors:company_list')
     company = get_object_or_404(Company, pk=pk)
     company.delete()
     messages.success(request, f"Company '{company.name}' deleted successfully.")
     referer = request.META.get('HTTP_REFERER')
-    if referer:
+    if referer and url_has_allowed_host_and_scheme(referer, allowed_hosts={request.get_host()}):
         return redirect(referer)
     return redirect('contractors:company_list')
 
+
+@login_required
+@require_POST
 def delete_subcontractor(request, pk):
-    if not (request.user.is_authenticated and (
+    if not (
         request.user.is_superuser or
         request.user.groups.filter(name__in=['Level 3', 'Level 4']).exists()
-    )):
+    ):
         messages.error(request, "You do not have permission to delete subcontractors.")
         return redirect('contractors:contractor_list')
     sub = get_object_or_404(Subcontractor, pk=pk)
     sub.delete()  
     messages.success(request, f"Subcontractor '{sub.name}' deleted successfully.")  
     referer = request.META.get('HTTP_REFERER')
-    if referer:
+    if referer and url_has_allowed_host_and_scheme(referer, allowed_hosts={request.get_host()}):
         return redirect(referer)
     return redirect('contractors:contractor_list')  
 
@@ -406,7 +414,15 @@ class ManageComplianceView(View):
         context = self.get_context_for_request(request, formset=formset)
         return render(request, self.template_name, context)
 
+@login_required
 def manage_compliance_requirements(request):
+    if not (
+        request.user.is_superuser or
+        request.user.groups.filter(name__in=['Level 3', 'Level 4']).exists()
+    ):
+        messages.error(request, "Permission denied. You do not have authorization to manage compliance requirements.")
+        return redirect('contractors:compliance_matrix')
+
     edit_id = request.GET.get('edit')
     req_instance = None
     if edit_id:

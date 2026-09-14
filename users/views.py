@@ -1,9 +1,12 @@
 from django.contrib import messages
 from django.contrib.auth import get_user_model, update_session_auth_hash
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
+from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, DeleteView, ListView, TemplateView, UpdateView
 
 from .forms import JobTitleForm, SelfProfileUpdateForm, UserCreateForm, UserUpdateForm
@@ -55,11 +58,10 @@ class ProfileView(LoginRequiredMixin, View):
         return render(request, self.template_name, context)
 
 
+@login_required
+@require_POST
 def toggle_2fa_view(request):
-    """Allows authenticated user to toggle or activate 2FA on their profile."""
-    if not request.user.is_authenticated:
-        return redirect('core:login')
-    
+    """Allows authenticated user to toggle or activate 2FA on their profile via POST."""
     profile, _ = Profile.objects.get_or_create(user=request.user)
     profile.is_2fa_enabled = not profile.is_2fa_enabled
     profile.save()
@@ -69,8 +71,10 @@ def toggle_2fa_view(request):
     else:
         messages.warning(request, "Two-Factor Authentication (2FA) is currently deactivated.")
         
-    next_url = request.POST.get('next') or request.META.get('HTTP_REFERER') or reverse_lazy('users:profile')
-    return redirect(next_url)
+    next_url = request.POST.get('next') or request.META.get('HTTP_REFERER')
+    if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
+        return redirect(next_url)
+    return redirect('users:profile')
 
 
 class UserListView(ManagementAccessMixin, ListView):

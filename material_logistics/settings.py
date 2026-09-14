@@ -29,11 +29,14 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-2x)%@2_0+#b5&qkil7ii1b%s$@
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 't')
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
+allowed_hosts_env = os.getenv('ALLOWED_HOSTS', '')
+if allowed_hosts_env:
+    ALLOWED_HOSTS = [h.strip() for h in allowed_hosts_env.split(',') if h.strip()]
+else:
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'testserver', 'azani-tracker.up.railway.app', '.railway.app']
 
-# CSRF Trusted Origins for Railway HTTPS deployments
+# CSRF Trusted Origins for HTTPS deployments
 CSRF_TRUSTED_ORIGINS = [
-    'https://*.up.railway.app',
     'https://azani-tracker.up.railway.app',
 ]
 raw_trusted_origins = os.getenv('CSRF_TRUSTED_ORIGINS', '')
@@ -173,4 +176,15 @@ DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Azani Project Tracker <inf
 # Two-Factor Authentication (OTP) Settings
 OTP_EXPIRY_MINUTES = int(os.getenv('OTP_EXPIRY_MINUTES', '10'))
 OTP_MAX_ATTEMPTS = int(os.getenv('OTP_MAX_ATTEMPTS', '5'))
+
+# Production Security & Cookie Hardening
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    CSRF_COOKIE_HTTPONLY = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'DENY'
+
 

@@ -1,5 +1,6 @@
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import User
 from django.contrib import messages
@@ -7,6 +8,7 @@ from django.views import View
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView
 from django.http import HttpResponseRedirect
 from django.utils.timezone import now
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.db.models import Q
 
 from core.permissions import Level2RequiredMixin, Level3RequiredMixin, Level4RequiredMixin
@@ -717,6 +719,7 @@ class ProjectExpenseBreakdownView(LoginRequiredMixin, DetailView):
         return context
 
 
+@login_required
 def export_project_expense_breakdown(request, pk):
     """Generates an itemized Excel workbook of all incurred expenses for the project."""
     import openpyxl
@@ -859,6 +862,7 @@ def export_project_expense_breakdown(request, pk):
     return response
 
 
+@login_required
 def export_projects_excel(request):
     """
     Generates an Excel spreadsheet (.xlsx) of projects matching the active filters
@@ -1152,7 +1156,7 @@ class ProjectMonitoringLogDeleteView(LoginRequiredMixin, View):
         messages.success(request, f"Progress report reversed. Project completion reverted to {new_pct}%.")
         
         next_url = request.POST.get('next') or request.META.get('HTTP_REFERER')
-        if next_url:
+        if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
             return redirect(next_url)
         return redirect('projects:project_detail', pk=project.pk)
 
@@ -1186,7 +1190,7 @@ class ProjectMonitoringImageDeleteView(LoginRequiredMixin, View):
 
         messages.success(request, "Evidence photo deleted successfully.")
         next_url = request.POST.get('next') or request.META.get('HTTP_REFERER')
-        if next_url:
+        if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
             return redirect(next_url)
         return redirect('projects:project_detail', pk=project.pk)
 
