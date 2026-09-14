@@ -42,7 +42,9 @@ class ProjectListView(LoginRequiredMixin, ListView):
 
         if q:
             qs = qs.filter(
-                Q(project_code__icontains=q) | Q(project_name__icontains=q)
+                Q(project_code__icontains=q) |
+                Q(project_name__icontains=q) |
+                Q(final_companies__icontains=q)
             )
         if year:
             qs = qs.filter(created_at__year=year)
@@ -854,7 +856,11 @@ def export_projects_excel(request):
     supplementary = (request.GET.get('is_supplementary') or request.GET.get('supplementary') or request.GET.get('sup') or '').strip().lower()
 
     if q:
-        qs = qs.filter(Q(project_code__icontains=q) | Q(project_name__icontains=q))
+        qs = qs.filter(
+            Q(project_code__icontains=q) |
+            Q(project_name__icontains=q) |
+            Q(final_companies__icontains=q)
+        )
     if year:
         qs = qs.filter(created_at__year=year)
     if mda:
