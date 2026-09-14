@@ -139,6 +139,10 @@
         <div class="p-6 space-y-6">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
             <div>
+              <div class="text-xs text-gray-500 uppercase font-semibold">Project Year</div>
+              <div class="text-gray-900 font-bold mt-0.5 inline-flex items-center px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-800 border border-slate-300">{{ project.year }}</div>
+            </div>
+            <div>
               <div class="text-xs text-gray-500 uppercase font-semibold">Project Code</div>
               <div class="text-gray-900 font-bold mt-0.5">{{ project.project_code }}</div>
             </div>
@@ -166,18 +170,34 @@
               <div class="text-xs text-gray-500 uppercase font-semibold">Category</div>
               <div class="text-gray-900 mt-0.5">{{ project.category.name|default:"-" }}</div>
             </div>
-            <div>
-              <div class="text-xs text-gray-500 uppercase font-semibold">Rolled Over From (Prev. Year)</div>
-              <div class="text-gray-900 mt-0.5">
-                {% if project.rolled_over_from %}
-                  <a href="{% url 'projects:project_detail' project.rolled_over_from.pk %}" class="text-[#bfa12c] hover:underline font-semibold flex items-center">
-                    <span class="material-symbols-outlined text-xs mr-1">link</span> {{ project.rolled_over_from.project_code }}
-                  </a>
+            <div class="md:col-span-2">
+              <div class="text-xs text-gray-500 uppercase font-semibold">Linked Project(s) (Previous Year Reference)</div>
+              <div class="text-gray-900 mt-1 flex flex-wrap gap-2 items-center">
+                {% if project.linked_projects.all %}
+                  {% for lp in project.linked_projects.all %}
+                    <a href="{% url 'projects:project_detail' lp.pk %}" class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100 hover:border-amber-300 transition">
+                      <span class="material-symbols-outlined text-xs mr-1">link</span> [{{ lp.year }}] {{ lp.project_code }} - {{ lp.mda }} ({{ lp.project_name|truncatechars:35 }})
+                    </a>
+                  {% endfor %}
+                {% elif project.linked_project_raw %}
+                  <span class="text-gray-700 text-xs font-medium bg-gray-100 px-2 py-1 rounded border border-gray-200">{{ project.linked_project_raw }}</span>
                 {% else %}
-                  -
+                  <span class="text-gray-400 text-sm">-</span>
                 {% endif %}
               </div>
             </div>
+            {% if project.linked_by_projects.all %}
+            <div class="md:col-span-2">
+              <div class="text-xs text-gray-500 uppercase font-semibold text-emerald-700">Follow-up / Linked In Subsequent Years</div>
+              <div class="text-gray-900 mt-1 flex flex-wrap gap-2 items-center">
+                {% for cp in project.linked_by_projects.all %}
+                  <a href="{% url 'projects:project_detail' cp.pk %}" class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-900 border border-emerald-200 hover:bg-emerald-100 transition">
+                    <span class="material-symbols-outlined text-xs mr-1">arrow_forward</span> [{{ cp.year }}] {{ cp.project_code }} - {{ cp.mda }} ({{ cp.project_name|truncatechars:35 }})
+                  </a>
+                {% endfor %}
+              </div>
+            </div>
+            {% endif %}
             <div>
               <div class="text-xs text-gray-500 uppercase font-semibold">Parent Project (Split Parts)</div>
               <div class="text-gray-900 mt-0.5">

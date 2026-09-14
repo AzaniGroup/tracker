@@ -10,8 +10,8 @@ class ProjectForm(forms.ModelForm):
     class Meta:
         model = Project
         fields = [
-            'project_code', 'mda', 'project_name', 'project_type', 'execution_mode', 'lot', 'location', 'category', 
-            'rolled_over_from', 'parent_project', 'part_name', 'part_percentage',
+            'project_code', 'year', 'mda', 'project_name', 'project_type', 'execution_mode', 'lot', 'location', 'category', 
+            'linked_projects', 'linked_project_raw', 'parent_project', 'part_name', 'part_percentage',
             'budget_amount', 'technical_submission_date', 'financial_submission_date', 'final_companies', 'back_up_companies', 'updated_recommended_companies',
             'plain_boq', 'priced_boq', 'drawing_design',
             'actual_contract_amount', 'in_house_benchmark', 'cost_percentage', 'staff_assigned', 'current_phase',
@@ -20,6 +20,7 @@ class ProjectForm(forms.ModelForm):
             'execution_level_percentage', 'project_status', 'payment_status', 'comments', 'remarks'
         ]
         widgets = {
+            'linked_projects': forms.SelectMultiple(attrs={'class': 'w-full rounded-md border-gray-300 shadow-sm focus:border-[#bfa12c] focus:ring-[#bfa12c] py-2 px-3 text-sm min-h-[100px]'}),
             'technical_submission_date': forms.DateInput(attrs={'type': 'date', 'class': 'w-full rounded-md border-gray-300 shadow-sm focus:border-[#bfa12c] focus:ring-[#bfa12c] py-2 px-3 text-sm'}),
             'financial_submission_date': forms.DateInput(attrs={'type': 'date', 'class': 'w-full rounded-md border-gray-300 shadow-sm focus:border-[#bfa12c] focus:ring-[#bfa12c] py-2 px-3 text-sm'}),
             'plain_boq': forms.FileInput(attrs={'class': 'w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 border border-gray-300 rounded-md shadow-sm'}),
@@ -36,7 +37,7 @@ class ProjectForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.instance and self.instance.pk:
-            self.fields['rolled_over_from'].queryset = Project.objects.exclude(pk=self.instance.pk)
+            self.fields['linked_projects'].queryset = Project.objects.exclude(pk=self.instance.pk)
             self.fields['parent_project'].queryset = Project.objects.exclude(pk=self.instance.pk)
         
         # Style form fields using modern Tailwind classes

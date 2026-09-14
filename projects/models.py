@@ -70,6 +70,7 @@ class Project(models.Model):
 
     # --- Core Identifiers ---
     sn = models.AutoField(primary_key=True, verbose_name="S/N")
+    year = models.PositiveIntegerField(default=2025, verbose_name="Project Year")
     mda = models.CharField(max_length=255, verbose_name="MDA", help_text="Ministry, Department, or Agency")
     project_code = models.CharField(max_length=100, verbose_name="Project Code")
     project_name = models.CharField(max_length=512, verbose_name="Project Name")
@@ -77,10 +78,11 @@ class Project(models.Model):
     project_type = models.CharField(max_length=20, choices=PROJECT_TYPE_CHOICES, default='CONSTRUCTION', verbose_name="Type")
     location = models.CharField(max_length=255, verbose_name="Location")
     category = models.ForeignKey(ProjectCategory, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Category")
-    rolled_over_from = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='rolled_over_to', verbose_name="Rolled Over From")
     parent_project = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='project_parts', verbose_name="Parent Project (for Split Parts)")
     part_name = models.CharField(max_length=100, blank=True, null=True, verbose_name="Part Name", help_text="e.g. Phase 1, Phase 2, Part A")
     part_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=100.00, verbose_name="Part Percentage", help_text="e.g. 60.00 for 60%")
+    linked_projects = models.ManyToManyField('self', blank=True, symmetrical=False, related_name='linked_by_projects', verbose_name="Linked Projects")
+    linked_project_raw = models.CharField(max_length=500, blank=True, null=True, verbose_name="Linked Project (Raw Text)")
     
     # --- Documents & Attachments ---
     plain_boq = models.FileField(upload_to='projects/boq/plain/', blank=True, null=True, verbose_name="Plain BOQ")

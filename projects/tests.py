@@ -17,10 +17,11 @@ class ProjectRestructuringTests(TestCase):
         self.user = User.objects.create_user(username="testuser", password="testpassword")
         self.staff_user = User.objects.create_user(username="staffuser", password="testpassword", is_staff=True)
         
-        # Add staff_user to Level 3 group to satisfy Level3RequiredMixin checks
+        # Add staff_user to Level 3 and Level 4 group to satisfy permission checks
         from django.contrib.auth.models import Group
         level3_group, _ = Group.objects.get_or_create(name='Level 3')
-        self.staff_user.groups.add(level3_group)
+        level4_group, _ = Group.objects.get_or_create(name='Level 4')
+        self.staff_user.groups.add(level3_group, level4_group)
 
         # Create parent project
         self.parent_project = Project.objects.create(
@@ -33,20 +34,22 @@ class ProjectRestructuringTests(TestCase):
         )
 
     def test_project_creation_and_attributes(self):
-        # Create child project rolled over from parent
+        # Create child project linked to parent
         project = Project.objects.create(
             project_code="PRJ-001",
+            year=2026,
             mda="Ministry of Works",
             project_name="Bridge Rehabilitation",
             location="Lagos",
             category=self.category_const,
-            rolled_over_from=self.parent_project,
             budget_amount=15000000.00,
             current_phase="POST_AWARD"
         )
+        project.linked_projects.add(self.parent_project)
         
         self.assertEqual(project.category.name, "Construction")
-        self.assertEqual(project.rolled_over_from.project_code, "PRJ-PARENT")
+        self.assertEqual(project.linked_projects.first().project_code, "PRJ-PARENT")
+        self.assertEqual(project.year, 2026)
         self.assertEqual(project.current_phase, "POST_AWARD")
         self.assertEqual(project.get_current_phase_display(), "Post-Award Phase")
 
@@ -75,13 +78,13 @@ class ProjectRestructuringTests(TestCase):
         url = reverse('projects:project_create')
         data = {
             'project_code': 'PRJ-NEW',
+            'year': 2026,
             'mda': 'Ministry of Environment',
             'project_name': 'Erosion Control',
             'project_type': 'CONSTRUCTION',
             'execution_mode': 'SELF_EXECUTED',
             'location': 'Anambra',
             'category': self.category_const.pk,
-            'rolled_over_from': '',
             'parent_project': '',
             'part_name': '',
             'part_percentage': '100.00',

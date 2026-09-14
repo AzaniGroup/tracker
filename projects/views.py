@@ -53,7 +53,10 @@ class ProjectListView(LoginRequiredMixin, ListView):
                 Q(subcontractors__name__icontains=q)
             ).distinct()
         if year:
-            qs = qs.filter(created_at__year=year)
+            if year.isdigit():
+                qs = qs.filter(Q(year=int(year)) | Q(created_at__year=int(year)))
+            else:
+                qs = qs.filter(created_at__year=year)
         if mda:
             qs = qs.filter(mda__icontains=mda)
         if category:
@@ -159,9 +162,10 @@ class ProjectListView(LoginRequiredMixin, ListView):
             context['page_range'] = [1]
 
         # Build distinct filter option lists from the full table (short & full versions)
-        context['year_choices'] = (
-            Project.objects.dates('created_at', 'year', order='DESC')
-        )
+        db_years = set(Project.objects.values_list('year', flat=True).distinct())
+        created_years = {d.year for d in Project.objects.dates('created_at', 'year')}
+        all_years = sorted(list(db_years | created_years), reverse=True)
+        context['year_choices'] = [{'year': y} for y in all_years if y]
         raw_mdas = Project.objects.values_list('mda', flat=True).distinct().order_by('mda')
         mda_choices = []
         seen_shorts = set()
