@@ -10,6 +10,7 @@ from django.utils.timezone import now
 from django.db.models import Q
 
 from core.permissions import Level2RequiredMixin, Level3RequiredMixin, Level4RequiredMixin
+from contractors.models import Subcontractor
 from .models import (
     Project, ProjectCategory, ProjectAllocation, ProjectLifecycleStage, 
     ProjectFee, FeeType, ProjectMonitoringLog, ProjectMonitoringImage,
@@ -30,12 +31,13 @@ class ProjectListView(LoginRequiredMixin, ListView):
     paginate_by = 30
 
     def get_queryset(self):
-        qs = super().get_queryset().select_related('category', 'staff_assigned')
+        qs = super().get_queryset().select_related('category', 'staff_assigned').prefetch_related('subcontractors')
         q = self.request.GET.get('q', '').strip()
         year = self.request.GET.get('year', '').strip()
         mda = self.request.GET.get('mda', '').strip()
         category = self.request.GET.get('category', '').strip()
         staff = self.request.GET.get('staff', '').strip()
+        subcontractor = self.request.GET.get('subcontractor', '').strip()
         project_type = self.request.GET.get('project_type', '').strip()
         awarded = self.request.GET.get('awarded', '').strip().lower()
         supplementary = (self.request.GET.get('is_supplementary') or self.request.GET.get('supplementary') or self.request.GET.get('sup') or '').strip().lower()
@@ -44,8 +46,9 @@ class ProjectListView(LoginRequiredMixin, ListView):
             qs = qs.filter(
                 Q(project_code__icontains=q) |
                 Q(project_name__icontains=q) |
-                Q(final_companies__icontains=q)
-            )
+                Q(final_companies__icontains=q) |
+                Q(subcontractors__name__icontains=q)
+            ).distinct()
         if year:
             qs = qs.filter(created_at__year=year)
         if mda:
@@ -69,6 +72,11 @@ class ProjectListView(LoginRequiredMixin, ListView):
                     Q(staff_assigned__first_name__icontains=staff) |
                     Q(staff_assigned__last_name__icontains=staff)
                 )
+        if subcontractor:
+            if subcontractor.isdigit():
+                qs = qs.filter(subcontractors__id=subcontractor).distinct()
+            else:
+                qs = qs.filter(subcontractors__name__icontains=subcontractor).distinct()
         if project_type:
             qs = qs.filter(project_type=project_type)
         awarded_q = (
@@ -127,6 +135,8 @@ class ProjectListView(LoginRequiredMixin, ListView):
         context['selected_category_display'] = cat_display
         context['selected_staff'] = selected_staff
         context['selected_staff_display'] = staff_display
+        context['selected_subcontractor'] = self.request.GET.get('subcontractor', '').strip()
+        context['subcontractor_choices'] = Subcontractor.objects.all().order_by('name')
         context['selected_type'] = self.request.GET.get('project_type', '')
         context['selected_awarded'] = self.request.GET.get('awarded', '')
         context['selected_supplementary'] = (self.request.GET.get('is_supplementary') or self.request.GET.get('supplementary') or self.request.GET.get('sup') or '').strip().lower()
@@ -851,6 +861,7 @@ def export_projects_excel(request):
     mda = request.GET.get('mda', '').strip()
     category = request.GET.get('category', '').strip()
     staff = request.GET.get('staff', '').strip()
+    subcontractor = request.GET.get('subcontractor', '').strip()
     project_type = request.GET.get('project_type', '').strip()
     awarded = request.GET.get('awarded', '').strip().lower()
     supplementary = (request.GET.get('is_supplementary') or request.GET.get('supplementary') or request.GET.get('sup') or '').strip().lower()
@@ -859,8 +870,9 @@ def export_projects_excel(request):
         qs = qs.filter(
             Q(project_code__icontains=q) |
             Q(project_name__icontains=q) |
-            Q(final_companies__icontains=q)
-        )
+            Q(final_companies__icontains=q) |
+            Q(subcontractors__name__icontains=q)
+        ).distinct()
     if year:
         qs = qs.filter(created_at__year=year)
     if mda:
@@ -884,6 +896,11 @@ def export_projects_excel(request):
                 Q(staff_assigned__first_name__icontains=staff) |
                 Q(staff_assigned__last_name__icontains=staff)
             )
+    if subcontractor:
+        if subcontractor.isdigit():
+            qs = qs.filter(subcontractors__id=subcontractor).distinct()
+        else:
+            qs = qs.filter(subcontractors__name__icontains=subcontractor).distinct()
     if project_type:
         qs = qs.filter(project_type=project_type)
     if awarded in ['awarded', 'yes', '1', 'true']:
