@@ -2,14 +2,16 @@ from django.contrib import messages
 from django.db.models import Q
 from django.forms import modelformset_factory
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.generic import ListView, TemplateView, View
+from urllib.parse import urlencode
 
 from .forms import CompanyForm, ComplianceRequirementForm, ComplianceUpdateForm, SubcontractorForm
 from .models import Company, CompanyCompliance, ComplianceRequirement, Subcontractor
 
 
-from django.core.paginator import EmptyPage, InvalidPage
+from django.core.paginator import Paginator, EmptyPage, InvalidPage
 from django.http import Http404
 
 class CompanyListView(ListView):
@@ -266,70 +268,142 @@ class ComplianceMatrixView(TemplateView):
 
 class ManageComplianceView(View):
     template_name = 'contractors/manage_compliance.html'
+    paginate_by = 10
 
-    def get_matrix_data(self, selected_year):
-        """Helper to safely initialize and pull compliance pairs."""
-        companies = Company.objects.all()
-        requirements = ComplianceRequirement.objects.all()
-        
-        # Auto-provision missing rows safely
+    def get_context_for_request(self, request, formset=None):
+        current_year = timezone.now().year
+        try:
+            selected_year = int(request.GET.get('year', current_year))
+        except (ValueError, TypeError):
+            selected_year = current_year
+
+        search_query = request.GET.get('q', '').strip()
+        page_number = request.GET.get('page', 1)
+
+        companies_qs = Company.objects.all().order_by('name')
+        if search_query:
+            companies_qs = companies_qs.filter(
+                Q(name__icontains=search_query) | Q(director_name__icontains=search_query)
+            )
+
+        paginator = Paginator(companies_qs, self.paginate_by)
+        try:
+            page_obj = paginator.page(page_number)
+        except (EmptyPage, InvalidPage):
+            page_obj = paginator.page(paginator.num_pages if paginator.num_pages > 0 else 1)
+
+        companies = page_obj.object_list
+        requirements = list(ComplianceRequirement.objects.all().order_by('name'))
+
+        # Auto-provision missing rows for current page's companies safely in bulk
+        existing_pairs = set(
+            CompanyCompliance.objects.filter(
+                year=selected_year,
+                company__in=companies
+            ).values_list('company_id', 'requirement_id')
+        )
+        to_create = []
         for company in companies:
             for req in requirements:
-                CompanyCompliance.objects.get_or_create(
-                    company=company,
-                    requirement=req,
-                    year=selected_year,
-                    defaults={'status': 'PENDING'}
-                )
-                
-        # Return the ordered records to bind to our Formset
-        return CompanyCompliance.objects.filter(year=selected_year).select_related('company', 'requirement')
+                if (company.id, req.id) not in existing_pairs:
+                    to_create.append(
+                        CompanyCompliance(
+                            company=company,
+                            requirement=req,
+                            year=selected_year,
+                            status='PENDING'
+                        )
+                    )
+        if to_create:
+            CompanyCompliance.objects.bulk_create(to_create, ignore_conflicts=True)
 
-    def get(self, request, *args, **kwargs):
-        current_year = timezone.now().year
-        selected_year = int(request.GET.get('year', current_year))
-        
-        queryset = self.get_matrix_data(selected_year)
-        
-        # Build the formset container (no pagination needed here, we want the full grid)
+        queryset = CompanyCompliance.objects.filter(
+            year=selected_year,
+            company__in=companies
+        ).select_related('company', 'requirement').order_by('company__name', 'requirement__name')
+
         ComplianceFormSet = modelformset_factory(CompanyCompliance, form=ComplianceUpdateForm, extra=0)
-        formset = ComplianceFormSet(queryset=queryset)
-        
-        # Zip forms and records together so we can arrange them neatly as a grid table in HTML
-        forms_and_records = zip(formset, queryset)
-        
+
+        if formset is None:
+            formset = ComplianceFormSet(queryset=queryset)
+
+        # Map forms by (company_id, requirement_id)
+        form_map = {
+            (form.instance.company_id, form.instance.requirement_id): form
+            for form in formset
+        }
+
+        company_rows = []
+        for company in companies:
+            row_items = []
+            for req in requirements:
+                form = form_map.get((company.id, req.id))
+                row_items.append({
+                    'form': form,
+                    'requirement': req,
+                })
+            company_rows.append({
+                'company': company,
+                'row_items': row_items,
+            })
+
+        # Query string for pagination links preserving year & q
+        query_params = request.GET.copy()
+        if 'page' in query_params:
+            del query_params['page']
+        query_string = query_params.urlencode()
+
         context = {
             'page_title': f'Manage Annual Company Compliance ({selected_year})',
             'formset': formset,
-            'forms_and_records': forms_and_records,
+            'company_rows': company_rows,
             'selected_year': selected_year,
             'year_range': range(current_year - 2, current_year + 2),
-            'requirements': ComplianceRequirement.objects.all(),
-            'companies': Company.objects.all(),
+            'requirements': requirements,
+            'paginator': paginator,
+            'page_obj': page_obj,
+            'is_paginated': page_obj.has_other_pages(),
+            'current_search': search_query,
+            'query_string': query_string,
+            'total_companies_count': companies_qs.count(),
         }
+        return context
+
+    def get(self, request, *args, **kwargs):
+        context = self.get_context_for_request(request)
         return render(request, self.template_name, context)
 
     def post(self, request, *args, **kwargs):
-        selected_year = int(request.GET.get('year', timezone.now().year))
-        
+        current_year = timezone.now().year
+        try:
+            selected_year = int(request.GET.get('year', current_year))
+        except (ValueError, TypeError):
+            selected_year = current_year
+
+        search_query = request.GET.get('q', '').strip()
+        page_number = request.GET.get('page', '1')
+
         ComplianceFormSet = modelformset_factory(CompanyCompliance, form=ComplianceUpdateForm, extra=0)
         formset = ComplianceFormSet(request.POST)
+
         if formset.is_valid():
             formset.save()
-            # Redirect back to the read-only matrix overview page we created earlier
-            return redirect('contractors:compliance_matrix')
-            
+            messages.success(request, "Compliance records updated successfully.")
+            params = {}
+            if selected_year:
+                params['year'] = selected_year
+            if search_query:
+                params['q'] = search_query
+            if page_number and page_number != '1':
+                params['page'] = page_number
+            redirect_url = reverse('contractors:manage_compliance')
+            if params:
+                redirect_url += f"?{urlencode(params)}"
+            return redirect(redirect_url)
+
         # If errors happen, reload screen with state
-        queryset = CompanyCompliance.objects.filter(year=selected_year).select_related('company', 'requirement')
-        context = {
-            'page_title': f'Manage Annual Company Compliance ({selected_year})',
-            'formset': formset,
-            'forms_and_records': zip(formset, queryset),
-            'selected_year': selected_year,
-            'year_range': range(timezone.now().year - 2, timezone.now().year + 2),
-            'requirements': ComplianceRequirement.objects.all(),
-            'companies': Company.objects.all(),
-        }
+        messages.error(request, "Please correct the errors in the form before submitting.")
+        context = self.get_context_for_request(request, formset=formset)
         return render(request, self.template_name, context)
 
 def manage_compliance_requirements(request):

@@ -19,9 +19,12 @@
         </div>
 
         <form method="GET" action="" class="flex items-center gap-3">
+            {% if current_search %}
+            <input type="hidden" name="q" value="{{ current_search }}">
+            {% endif %}
             <label for="year" class="text-sm font-semibold text-gray-750 shrink-0">Calendar Year:</label>
             <select name="year" id="year" onchange="this.form.submit()"
-                    class="block w-32 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#bfa12c] focus:border-[#bfa12c] text-sm text-gray-900 transition duration-150">
+                    class="block w-32 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#bfa12c] focus:border-[#bfa12c] text-sm text-gray-900 transition duration-150 font-medium">
                 {% for y in year_range %}
                 <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
                 {% endfor %}
@@ -29,69 +32,179 @@
         </form>
     </div>
 
+    <!-- Search Bar & Filter Controls -->
+    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+        <form method="GET" action="" class="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
+            <input type="hidden" name="year" value="{{ selected_year }}">
+            
+            <div class="relative flex-1">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                    <span class="material-symbols-outlined text-lg">search</span>
+                </div>
+                <input type="text" name="q" value="{{ current_search }}"
+                    placeholder="Search by company name or director..."
+                    class="block w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg bg-gray-50 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#bfa12c] focus:border-[#bfa12c] text-sm text-gray-900 transition duration-150">
+            </div>
+
+            <div class="flex gap-2">
+                <button type="submit"
+                    class="px-5 py-2 rounded-lg bg-gray-900 hover:bg-gray-800 text-white font-semibold text-sm transition duration-150 flex items-center justify-center gap-1.5 shadow-sm">
+                    <span class="material-symbols-outlined text-sm">filter_list</span>
+                    Filter
+                </button>
+                {% if current_search %}
+                <a href="?year={{ selected_year }}"
+                    class="px-4 py-2 border border-gray-300 rounded-lg text-gray-750 bg-white hover:bg-gray-50 font-semibold text-sm transition duration-150 flex items-center justify-center">
+                    Clear
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
     <!-- Edit Grid Form -->
-    <form method="POST" action="?year={{ selected_year }}" class="space-y-6">
+    <form method="POST" action="?year={{ selected_year }}{% if current_search %}&q={{ current_search|urlencode }}{% endif %}{% if page_obj.number > 1 %}&page={{ page_obj.number }}{% endif %}" class="space-y-6">
         {% csrf_token %}
         {{ formset.management_form }}
 
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="px-6 py-3 bg-gray-50/70 border-b border-gray-200 flex justify-between items-center text-xs text-gray-500">
+                <span>
+                    Showing <strong class="text-gray-900">{{ company_rows|length }}</strong> of <strong class="text-gray-900">{{ total_companies_count }}</strong> companies
+                    {% if current_search %}matching "<strong>{{ current_search }}</strong>"{% endif %}
+                </span>
+                <span class="font-medium">Calendar Year: <strong class="text-[#bfa12c]">{{ selected_year }}</strong></span>
+            </div>
+
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-gray-50 border-b border-gray-200 text-xs font-bold uppercase tracking-wider text-gray-500">
-                            <th class="py-4 px-6 sticky left-0 bg-gray-50 z-10 min-w-[220px]">Company</th>
+                            <th class="py-4 px-6 sticky left-0 bg-gray-50 z-10 min-w-[240px]">Company</th>
                             {% for req in requirements %}
-                            <th class="py-4 px-4 text-center min-w-[200px] border-l border-gray-150">
+                            <th class="py-4 px-4 text-center min-w-[210px] border-l border-gray-150">
                                 {{ req.name }}
                             </th>
                             {% endfor %}
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-150 text-xs text-gray-700">
-                        {% for company in companies %}
+                        {% for row in company_rows %}
                         <tr class="hover:bg-gray-50/50 transition duration-150">
                             <!-- Company Name Column -->
                             <td class="py-4 px-6 font-semibold text-gray-900 sticky left-0 bg-white shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
-                                {{ company.name }}
+                                <div>{{ row.company.name }}</div>
+                                {% if row.company.director_name %}
+                                <div class="text-[11px] font-normal text-gray-400 mt-0.5">{{ row.company.director_name }}</div>
+                                {% endif %}
                             </td>
 
                             <!-- Compliance Inputs Matrix -->
-                            {% for form in formset %}
-                            {% if form.instance.company_id == company.id %}
+                            {% for item in row.row_items %}
                             <td class="p-3 text-center border-l border-gray-150 bg-gray-50/30">
-                                {{ form.id }} 
-                                <div class="space-y-2">
-                                    <div class="space-y-1">
-                                        <label class="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">Status</label>
-                                        {{ form.status }}
+                                {% if item.form %}
+                                    {{ item.form.id }}
+                                    <div class="space-y-2">
+                                        <div class="space-y-1 text-left">
+                                            <label class="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">Status</label>
+                                            {{ item.form.status }}
+                                        </div>
+                                        <div class="space-y-1 text-left">
+                                            <label class="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">Expiry Date</label>
+                                            {{ item.form.expiry_date }}
+                                        </div>
                                     </div>
-                                    <div class="space-y-1">
-                                        <label class="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">Optional Expiry</label>
-                                        {{ form.expiry_date }}
-                                    </div>
-                                </div>
 
-                                {% if form.errors %}
-                                <span class="text-rose-600 block text-[10px] mt-1.5 font-semibold">Error saving entry</span>
+                                    {% if item.form.errors %}
+                                    <span class="text-rose-600 block text-[10px] mt-1.5 font-semibold">Error saving entry</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-gray-400 italic text-[11px]">N/A</span>
                                 {% endif %}
                             </td>
-                            {% endif %}
                             {% endfor %}
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="{{ requirements|length|add:1 }}" class="text-center py-12 text-gray-500 italic">
+                                No companies found matching the search criteria.
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
+
+            <!-- Pagination Controls -->
+            {% if is_paginated %}
+            <div class="bg-gray-50 px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                <div class="flex-1 flex justify-between sm:hidden">
+                    {% if page_obj.has_previous %}
+                    <a href="?page={{ page_obj.previous_page_number }}{% if query_string %}&{{ query_string }}{% endif %}"
+                        class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Previous
+                    </a>
+                    {% endif %}
+                    {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}{% if query_string %}&{{ query_string }}{% endif %}"
+                        class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Next
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-xs text-gray-500">
+                            Showing page <span class="font-semibold text-gray-900">{{ page_obj.number }}</span> of <span
+                                class="font-semibold text-gray-900">{{ paginator.num_pages }}</span> pages ({{ total_companies_count }} total companies).
+                        </p>
+                    </div>
+                    <div>
+                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                            {% if page_obj.has_previous %}
+                            <a href="?page={{ page_obj.previous_page_number }}{% if query_string %}&{{ query_string }}{% endif %}"
+                                class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <span class="sr-only">Previous</span>
+                                <span class="material-symbols-outlined text-sm">chevron_left</span>
+                            </a>
+                            {% endif %}
+
+                            {% for p in paginator.page_range %}
+                                {% if p == page_obj.number %}
+                                <span class="relative inline-flex items-center px-3.5 py-2 border border-[#bfa12c] bg-[#bfa12c] text-sm font-bold text-white z-10">
+                                    {{ p }}
+                                </span>
+                                {% elif p >= page_obj.number|add:-2 and p <= page_obj.number|add:2 %}
+                                <a href="?page={{ p }}{% if query_string %}&{{ query_string }}{% endif %}"
+                                    class="relative inline-flex items-center px-3.5 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                    {{ p }}
+                                </a>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                            <a href="?page={{ page_obj.next_page_number }}{% if query_string %}&{{ query_string }}{% endif %}"
+                                class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <span class="sr-only">Next</span>
+                                <span class="material-symbols-outlined text-sm">chevron_right</span>
+                            </a>
+                            {% endif %}
+                        </nav>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
         </div>
 
         <!-- Submit actions -->
         <div class="flex items-center justify-end gap-3 p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
             <a href="{% url 'contractors:compliance_matrix' %}?year={{ selected_year }}"
-               class="px-5 py-2.5 border border-gray-350 rounded-lg text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 transition duration-150">
+               class="px-5 py-2.5 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 transition duration-150">
                 Cancel
             </a>
             <button type="submit"
-                    class="px-6 py-2.5 rounded-lg shadow-md text-sm font-semibold text-white gold-bg gold-bg-hover transition duration-150">
+                    class="px-6 py-2.5 rounded-lg shadow-md text-sm font-semibold text-white gold-bg gold-bg-hover transition duration-150 flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-sm">save</span>
                 Save Compliance Sheet Changes
             </button>
         </div>
