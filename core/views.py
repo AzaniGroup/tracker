@@ -563,10 +563,7 @@ class DashboardView(ProjectRequiredMixin, TemplateView):
         )
 
         for cat_name in category_list:
-            if cat_name == 'CONSTRUCTION':
-                cat_qs = projects_qs.filter(Q(category__name__iexact='CONSTRUCTION') | Q(category__name__icontains='Civil') | Q(project_type__icontains='CONSTRUCTION'))
-            else:
-                cat_qs = projects_qs.filter(Q(category__name__iexact=cat_name) | Q(project_type__iexact=cat_name))
+            cat_qs = projects_qs.filter(category__name__iexact=cat_name)
             
             c_total = cat_qs.count()
             c_awarded = cat_qs.filter(awarded_q).distinct().count()
