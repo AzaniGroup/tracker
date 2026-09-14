@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model, login as auth_login, logout as auth_logout
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import LoginView as BaseLoginView
-from django.db.models import Sum, F, Q
+from django.db.models import Sum, F, Q, Count
 from django.http import HttpResponse
 from django.shortcuts import redirect, get_object_or_404, render
 from django.urls import reverse_lazy
@@ -381,7 +381,6 @@ class DashboardView(ProjectRequiredMixin, TemplateView):
         
         selected_year = self.request.GET.get('year', '').strip()
         selected_mda = self.request.GET.get('mda', '').strip()
-
         # 1. Scope determination
         if self.project:
             projects_qs = Project.objects.filter(sn=self.project.sn)
@@ -389,7 +388,10 @@ class DashboardView(ProjectRequiredMixin, TemplateView):
             projects_qs = Project.objects.all()
 
         if selected_year:
-            projects_qs = projects_qs.filter(created_at__year=selected_year)
+            if selected_year.isdigit():
+                projects_qs = projects_qs.filter(Q(year=int(selected_year)) | Q(created_at__year=int(selected_year)))
+            else:
+                projects_qs = projects_qs.filter(created_at__year=selected_year)
         if selected_mda:
             projects_qs = projects_qs.filter(mda__icontains=selected_mda)
 
@@ -450,22 +452,45 @@ class DashboardView(ProjectRequiredMixin, TemplateView):
             is_alert = (p_status == "uploaded for payment" and not p_batch)
             
             project_roadmaps.append({
-                'project_code': p.project_code,
-                'project_name': p.project_name,
-                'payment_status': p.payment_status,
-                'batch_no_final_payment': p.batch_no_final_payment,
-                'is_alert': is_alert,
-                'stages': [
-                    {'name': 'Head of Audit', 'is_completed': audit_stage.is_completed if audit_stage else False, 'notes': audit_stage.notes_or_updates if audit_stage else ''},
-                    {'name': 'Procurement Office', 'is_completed': procurement_stage.is_completed if procurement_stage else False, 'notes': procurement_stage.notes_or_updates if procurement_stage else ''},
-                    {'name': 'Store Department', 'is_completed': store_stage.is_completed if store_stage else False, 'notes': store_stage.notes_or_updates if store_stage else ''},
-                    {'name': 'Director of Finance', 'is_completed': finance_stage.is_completed if finance_stage else False, 'notes': finance_stage.notes_or_updates if finance_stage else ''},
-                    {'name': 'AGF Payment', 'is_completed': agf_stage.is_completed if agf_stage else False, 'notes': agf_stage.notes_or_updates if agf_stage else ''},
-                ]
+                'project': p,
+                'audit_stage': audit_stage,
+                'procurement_stage': procurement_stage,
+                'store_stage': store_stage,
+                'finance_stage': finance_stage,
+                'agf_stage': agf_stage,
+                'is_alert': is_alert
             })
             
-        # 5. Layer C: Field Operations & Subcontractor Health
-        # Bulk query approved cash requests per project in 1 DB hit
+        # 5. Layer C: Subcontractor Liability Exposure Matrix
+        subcontractor_liabilities = allocations_qs.values(
+            'subcontractor__name'
+        ).annotate(
+            total_agreed=Sum('amount_agreed_with_supplier_contractor'),
+            total_advanced=Sum('advance_received_by_supplier_contractor'),
+            net_liability=Sum(F('amount_agreed_with_supplier_contractor') - F('advance_received_by_supplier_contractor')),
+            active_projects_count=Count('project', distinct=True)
+        ).order_by('-net_liability')
+        
+        # 6. Layer D: Field Operations Action Items
+        # Pending Milestone Cash Requests
+        pending_cash_requests = cash_requests_qs.filter(status='PENDING').select_related('project', 'requested_by')
+        
+        # Material Deficiency Alerts
+        material_alerts = stores_qs.filter(quantity_on_site=0).select_related('project')
+        
+        # Vendor Compliance Safeguards
+        current_year = timezone.now().year
+        today = timezone.now().date()
+        thirty_days_later = today + timedelta(days=30)
+        
+        compliance_alerts = CompanyCompliance.objects.filter(
+            year=current_year
+        ).filter(
+            Q(status__in=['PENDING', 'EXPIRED']) |
+            Q(status='APPROVED', expiry_date__lte=thirty_days_later)
+        ).select_related('company', 'requirement').order_by('company__name', 'requirement__name')
+        
+        # Progress vs Budget Burn-Rate Variance
         drawn_down_map = dict(
             MilestoneCashRequest.objects.filter(
                 project__in=projects_qs, status='APPROVED'
@@ -474,7 +499,6 @@ class DashboardView(ProjectRequiredMixin, TemplateView):
             ).values_list('project_id', 'total_drawn')
         )
 
-        # Progress vs Budget Burn-Rate Variance
         project_variances = []
         for p in projects_qs:
             drawn_down = drawn_down_map.get(p.pk, 0.0) or 0.0
@@ -497,26 +521,7 @@ class DashboardView(ProjectRequiredMixin, TemplateView):
         external_pct = allocations_qs.aggregate(total=Sum('sub_contractor_cost_percentage'))['total'] or 0.0
         external_pct = float(external_pct)
         in_house_pct = max(0.0, 100.0 - external_pct)
-        
-        # 6. Layer D: Field Operations Action Items
-        # Pending Milestone Cash Requests
-        pending_cash_requests = cash_requests_qs.filter(status='PENDING').select_related('project', 'requested_by')
-        
-        # Material Deficiency Alerts
-        material_alerts = stores_qs.filter(quantity_on_site=0).select_related('project')
-        
-        # Vendor Compliance Safeguards
-        current_year = timezone.now().year
-        today = timezone.now().date()
-        thirty_days_later = today + timedelta(days=30)
-        
-        compliance_alerts = CompanyCompliance.objects.filter(
-            year=current_year
-        ).filter(
-            Q(status__in=['PENDING', 'EXPIRED']) |
-            Q(status='APPROVED', expiry_date__lte=thirty_days_later)
-        ).select_related('company', 'requirement').order_by('company__name', 'requirement__name')
-        
+
         # Executive Summary Metrics (Matching User Reference Sheets)
         total_projects_count = projects_qs.count()
         total_budget_amount = projects_qs.aggregate(val=Sum('budget_amount'))['val'] or Decimal('0.00')
@@ -528,17 +533,17 @@ class DashboardView(ProjectRequiredMixin, TemplateView):
         total_given_out_awarded = max(Decimal('0.00'), total_awarded_amount - total_in_house_awarded)
         total_mobilization_rec = projects_qs.aggregate(val=Sum('mobilization_received'))['val'] or Decimal('0.00')
 
-        # Distinct Agencies
-        distinct_mdas = [mda for mda in projects_qs.values_list('mda', flat=True).distinct() if mda]
+        # Distinct Agencies (Explicitly clear order_by to avoid Meta ordering from including extra columns)
+        distinct_mdas = sorted(list({mda.strip() for mda in projects_qs.order_by().values_list('mda', flat=True) if mda and mda.strip()}))
         agency_count = len(distinct_mdas)
         agency_short_list = ", ".join([mda.split('(')[-1].replace(')', '').strip() if '(' in mda else mda for mda in distinct_mdas])
 
         # Distinct Year Choices for Filter Dropdown
-        year_choices = sorted(
-            set(Project.objects.dates('created_at', 'year').values_list('created_at__year', flat=True)),
-            reverse=True
-        )
-        raw_mda_list = [m for m in Project.objects.values_list('mda', flat=True).distinct().order_by('mda') if m]
+        db_years = set(Project.objects.values_list('year', flat=True).distinct())
+        created_years = {d.year for d in Project.objects.dates('created_at', 'year')}
+        year_choices = sorted(list(db_years | created_years), reverse=True)
+
+        raw_mda_list = sorted(list({m.strip() for m in Project.objects.order_by().values_list('mda', flat=True) if m and m.strip()}))
         mda_choices = []
         seen_shorts = set()
         for m in raw_mda_list:
