@@ -70,10 +70,6 @@ class CustomLoginView(BaseLoginView):
             except Exception:
                 pass
 
-            messages.info(
-                self.request,
-                f"Two-Factor Authentication is active. A single-use verification code has been sent to {mask_email(user.email)}."
-            )
             return redirect('core:verify_otp')
 
         # Standard login
