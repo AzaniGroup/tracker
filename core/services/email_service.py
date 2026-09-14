@@ -199,7 +199,7 @@ def send_otp_email(user, otp_code: str) -> dict:
           </div>
         </div>
         <div class="footer">
-          &copy; Azani Group Limited. All rights reserved.
+          &copy; Azani Project Tracker &bull; Azani Group. All rights reserved.
         </div>
       </div>
     </body>

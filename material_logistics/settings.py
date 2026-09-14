@@ -168,7 +168,7 @@ MEDIA_ROOT = Path(os.getenv('MEDIA_ROOT', BASE_DIR / 'media'))
 
 # Resend Email Configuration
 RESEND_API_KEY = os.getenv('RESEND_API_KEY', '')
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Azani Logistics <onboarding@resend.dev>')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Azani Project Tracker <info@azanigroup.ng>')
 
 # Two-Factor Authentication (OTP) Settings
 OTP_EXPIRY_MINUTES = int(os.getenv('OTP_EXPIRY_MINUTES', '10'))
