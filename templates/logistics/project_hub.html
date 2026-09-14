@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load group_tags humanize %}
 
-{% block title %} {{ page_title }} - Logistics{% endblock %}
+{% block title %} {{ page_title }} - Azani Project Tracker{% endblock %}
 
 {% block content %}
 <div class="space-y-6 max-w-7xl mx-auto">
@@ -16,7 +16,7 @@
         <a href="{% url 'projects:project_detail' project.pk %}" class="hover:text-[#bfa12c] transition">
           {{ project.project_code }}</a>
         <span class="material-symbols-outlined text-sm">chevron_right</span>
-        <span class="text-gray-900">Site Logistics</span>
+        <span class="text-gray-900">Site Store</span>
       </div>
       <div class="flex items-center gap-3">
         <h1 class="text-2xl font-bold text-gray-900">{{ project.project_name }}</h1>
@@ -26,7 +26,7 @@
           {% endfor %}
         </select>
       </div>
-      <p class="text-sm text-gray-500 mt-0.5">Site Logistics Hub &mdash; Inventory, Cash Requests &amp; Usage Logs</p>
+      <p class="text-sm text-gray-500 mt-0.5">Site Store &amp; Materials Hub &mdash; Inventory, Cash Requests &amp; Usage Logs</p>
     </div>
     {% if request.user.is_superuser or request.user|has_group:'Level 2' or request.user|has_group:'Level 3' or request.user|has_group:'Level 4' %}
     <div class="flex flex-wrap gap-2">

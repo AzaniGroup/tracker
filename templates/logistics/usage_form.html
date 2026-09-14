@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ page_title }} - Logistics{% endblock %}
+{% block title %}{{ page_title }} - Azani Project Tracker{% endblock %}
 
 {% block content %}
 <div class="max-w-2xl mx-auto space-y-6">
@@ -11,7 +11,7 @@
     <span class="material-symbols-outlined text-sm">chevron_right</span>
     <a href="{% url 'projects:project_detail' project.pk %}" class="hover:text-[#bfa12c] transition">{{ project.project_code }}</a>
     <span class="material-symbols-outlined text-sm">chevron_right</span>
-    <a href="{% url 'logistic:project_logistics_hub' project.pk %}" class="hover:text-[#bfa12c] transition">Site Logistics</a>
+    <a href="{% url 'logistic:project_logistics_hub' project.pk %}" class="hover:text-[#bfa12c] transition">Site Store</a>
     <span class="material-symbols-outlined text-sm">chevron_right</span>
     <span class="text-gray-900">Log Usage</span>
   </div>

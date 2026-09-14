@@ -6,7 +6,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}Azanigroup - Project Management{% endblock %}</title>
+  <title>{% block title %}Azani Project Tracker{% endblock %}</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Google Fonts: Outfit -->
@@ -156,9 +156,9 @@
             </a>
           </div>
 
-          <!-- Logistics & Finance -->
+          <!-- Operations & Finance -->
           <div class="space-y-1">
-            <span class="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1.5">Logistics & Finance</span>
+            <span class="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1.5">Site Operations & Finance</span>
             <a href="{% url 'logistic:cash_requests_dashboard' %}"
               class="flex items-center px-4 py-2 text-sm font-medium text-gray-600 rounded-md hover:bg-gray-50 group transition {% if request.resolver_match.url_name == 'cash_requests_dashboard' %}active-nav-item{% endif %}">
               <span class="material-symbols-outlined mr-3 text-gray-400 group-hover:text-gray-500 text-lg">payments</span>
@@ -167,7 +167,7 @@
             <a href="{% url 'logistic:site_logistics_landing' %}"
               class="flex items-center px-4 py-2 text-sm font-medium text-gray-600 rounded-md hover:bg-gray-50 group transition {% if 'logistics' in request.path %}active-nav-item{% endif %}">
               <span class="material-symbols-outlined mr-3 text-gray-400 group-hover:text-gray-500 text-lg">warehouse</span>
-              Site Logistics
+              Site Store & Materials
             </a>
           </div>
 

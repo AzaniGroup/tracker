@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load group_tags %}
 
-{% block title %}Subcontractors - Logistics{% endblock %}
+{% block title %}Subcontractors - Azani Project Tracker{% endblock %}
 
 {% block content %}
 <div class="space-y-6 max-w-7xl mx-auto">
@@ -9,7 +9,7 @@
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-5 border-b border-gray-200">
         <div>
             <h1 class="text-3xl font-bold tracking-tight text-gray-900">Subcontractor Directory</h1>
-            <p class="text-sm text-gray-500 mt-1">Manage active internal teams and external logistics partners.</p>
+            <p class="text-sm text-gray-500 mt-1">Manage active internal teams and external contractor partners.</p>
         </div>
         {% if request.user.is_superuser or request.user|has_group:'Level 3' or request.user|has_group:'Level 4' %}
         <div class="flex items-center gap-3">

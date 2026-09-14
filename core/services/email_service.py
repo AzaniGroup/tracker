@@ -24,7 +24,7 @@ def send_resend_email(to_email: str, subject: str, html_content: str, text_conte
     Falls back to console/logger if RESEND_API_KEY is not configured.
     """
     api_key = getattr(settings, 'RESEND_API_KEY', '')
-    from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'Azani Logistics <onboarding@resend.dev>')
+    from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'Azani Project Tracker <onboarding@resend.dev>')
 
     if not api_key:
         logger.warning(
@@ -69,7 +69,7 @@ def send_otp_email(user, otp_code: str) -> dict:
         logger.warning(f"User {user.username} has no email address configured for OTP delivery.")
         return {"error": "no_email"}
 
-    subject = f"{otp_code} is your Azani Logistics verification code"
+    subject = f"{otp_code} is your Azani Project Tracker verification code"
     expiry_minutes = getattr(settings, 'OTP_EXPIRY_MINUTES', 10)
     user_name = escape(user.get_full_name() or user.username)
     safe_otp = escape(str(otp_code))
@@ -80,7 +80,7 @@ def send_otp_email(user, otp_code: str) -> dict:
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Azani Logistics Security Verification</title>
+      <title>Azani Project Tracker Security Verification</title>
       <style>
         body {{
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -184,12 +184,12 @@ def send_otp_email(user, otp_code: str) -> dict:
     <body>
       <div class="container">
         <div class="header">
-          <h1>Azani <span>Logistics</span></h1>
+          <h1>Azani <span>Project Tracker</span></h1>
         </div>
         <div class="body-content">
           <div class="greeting">Hello {user_name},</div>
           <div class="instruction">
-            A sign-in attempt was initiated for your Azani Logistics account. Use the single-use One-Time Password (OTP) below to complete your authentication.
+            A sign-in attempt was initiated for your Azani Project Tracker account. Use the single-use One-Time Password (OTP) below to complete your authentication.
           </div>
           <div class="otp-box">
             <div class="otp-label">Single-Use Verification Code</div>
@@ -211,7 +211,7 @@ def send_otp_email(user, otp_code: str) -> dict:
     plain_user_name = user.get_full_name() or user.username
     text_content = (
         f"Hello {plain_user_name},\n\n"
-        f"Your single-use Azani Logistics verification code is: {otp_code}\n\n"
+        f"Your single-use Azani Project Tracker verification code is: {otp_code}\n\n"
         f"This code will expire in {expiry_minutes} minutes and can only be used once.\n\n"
         f"If you did not request this code, please contact your administrator immediately."
     )

@@ -22,7 +22,7 @@
       {% if project.execution_mode == 'SELF_EXECUTED' %}
       <a href="{% url 'logistic:project_logistics_hub' project.pk %}"
         class="inline-flex items-center bg-[#3e5052] hover:bg-[#2e3e40] text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition">
-        <span class="material-symbols-outlined text-sm mr-1.5">warehouse</span> Site Logistics Hub
+        <span class="material-symbols-outlined text-sm mr-1.5">warehouse</span> Site Store & Materials Hub
       </a>
       {% endif %}
       {% if not project.parent_project %}
