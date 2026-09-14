@@ -23,6 +23,7 @@ from .forms import (
     ProjectPhaseCommentForm
 )
 from .utils import log_project_activity
+from core.services.email_service import send_progress_log_notification
 
 class ProjectListView(LoginRequiredMixin, ListView):
     model = Project
@@ -578,6 +579,13 @@ class ProjectMonitoringLogCreateView(Level2RequiredMixin, View):
                 title=f"Site Monitoring Logged ({log_entry.reported_execution_percentage}%)",
                 description=f"Engineer assessment: {log_entry.reported_execution_percentage}% complete. Site Notes: {log_entry.description}"
             )
+
+            # Send email update to all Level 4 staff
+            try:
+                send_progress_log_notification(log_entry)
+            except Exception as e:
+                pass
+
             messages.success(request, f"Monitoring log updated. Project progress set to {log_entry.reported_execution_percentage}%.")
         else:
             messages.error(request, "Error creating monitoring log. Please verify details.")
@@ -650,6 +658,13 @@ class ProjectMonitoringDashboardView(LoginRequiredMixin, View):
                 title=f"Site Monitoring Logged ({log_entry.reported_execution_percentage}%)",
                 description=f"Engineer assessment: {log_entry.reported_execution_percentage}% complete. Site Notes: {log_entry.description}"
             )
+
+            # Send email update to all Level 4 staff
+            try:
+                send_progress_log_notification(log_entry)
+            except Exception as e:
+                pass
+
             messages.success(request, f"Monitoring log submitted for project {log_entry.project.project_code}. Progress updated to {log_entry.reported_execution_percentage}%.")
         else:
             messages.error(request, "Failed to submit monitoring log. Please correct form errors.")

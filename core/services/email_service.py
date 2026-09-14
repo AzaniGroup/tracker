@@ -214,3 +214,225 @@ def send_otp_email(user, otp_code: str) -> dict:
     )
 
     return send_resend_email(to_email, subject, html_content, text_content)
+
+
+def send_progress_log_notification(monitoring_log) -> list:
+    """
+    Sends an email update to all Level 4 staff and superusers when a new progress/monitoring log is created.
+    """
+    from django.contrib.auth.models import User
+    from django.db.models import Q
+
+    # Fetch active Level 4 staff and superusers who have an email address configured
+    recipients = list(
+        User.objects.filter(
+            Q(groups__name='Level 4') | Q(is_superuser=True),
+            is_active=True
+        ).exclude(email='').values_list('email', flat=True).distinct()
+    )
+
+    if not recipients:
+        logger.info("No Level 4 recipients found to send progress log email notification.")
+        return []
+
+    project = monitoring_log.project
+    reporter_name = monitoring_log.reported_by.get_full_name() or monitoring_log.reported_by.username
+    progress_pct = monitoring_log.reported_execution_percentage
+    date_str = monitoring_log.start_date.strftime("%b %d, %Y") if monitoring_log.start_date else "Recent"
+    if monitoring_log.end_date and monitoring_log.end_date != monitoring_log.start_date:
+        date_str += f" – {monitoring_log.end_date.strftime('%b %d, %Y')}"
+    
+    images_count = monitoring_log.images.count()
+    images_text = f"{images_count} site photo(s) attached" if images_count > 0 else "No photos attached"
+
+    subject = f"[Progress Update {progress_pct}%] {project.project_code} - {project.project_name[:50]}"
+
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Site Progress Update</title>
+      <style>
+        body {{
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+          background-color: #f8f6f1;
+          margin: 0;
+          padding: 30px 15px;
+          color: #1f2937;
+        }}
+        .container {{
+          max-width: 580px;
+          margin: 0 auto;
+          background-color: #ffffff;
+          border-radius: 16px;
+          overflow: hidden;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+          border: 1px solid #e5e7eb;
+        }}
+        .header {{
+          background-color: #111827;
+          padding: 24px;
+          text-align: center;
+          border-bottom: 3px solid #bfa12c;
+        }}
+        .header h1 {{
+          color: #ffffff;
+          margin: 0;
+          font-size: 20px;
+          font-weight: 700;
+          letter-spacing: 0.5px;
+        }}
+        .header span {{
+          color: #bfa12c;
+        }}
+        .body-content {{
+          padding: 28px 24px;
+        }}
+        .badge-progress {{
+          display: inline-block;
+          background-color: #ecfdf5;
+          border: 1px solid #a7f3d0;
+          color: #065f46;
+          font-size: 13px;
+          font-weight: 700;
+          padding: 6px 14px;
+          border-radius: 20px;
+          margin-bottom: 16px;
+        }}
+        .project-title {{
+          font-size: 18px;
+          font-weight: 700;
+          color: #111827;
+          margin-bottom: 6px;
+          line-height: 1.4;
+        }}
+        .project-meta {{
+          font-size: 13px;
+          color: #6b7280;
+          margin-bottom: 20px;
+        }}
+        .info-card {{
+          background-color: #f9fafb;
+          border-radius: 10px;
+          padding: 16px;
+          border: 1px solid #e5e7eb;
+          margin-bottom: 20px;
+        }}
+        .info-table {{
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 13px;
+        }}
+        .info-table td {{
+          padding: 6px 0;
+          border-bottom: 1px solid #f3f4f6;
+        }}
+        .info-table tr:last-child td {{
+          border-bottom: none;
+        }}
+        .info-label {{
+          font-weight: 600;
+          color: #4b5563;
+          width: 40%;
+        }}
+        .info-value {{
+          color: #111827;
+          text-align: right;
+        }}
+        .notes-box {{
+          background-color: #fffdf5;
+          border-left: 4px solid #bfa12c;
+          padding: 14px 16px;
+          border-radius: 4px;
+          margin-top: 10px;
+          font-size: 13px;
+          line-height: 1.6;
+          color: #374151;
+        }}
+        .footer {{
+          padding: 20px;
+          background-color: #f9fafb;
+          text-align: center;
+          font-size: 12px;
+          color: #9ca3af;
+          border-top: 1px solid #f3f4f6;
+        }}
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Azani <span>Project Tracker</span></h1>
+        </div>
+        <div class="body-content">
+          <div class="badge-progress">
+            Site Progress: {progress_pct}% Overall Completion
+          </div>
+          <div class="project-title">
+            {project.project_code} &mdash; {project.project_name}
+          </div>
+          <div class="project-meta">
+            MDA: {project.mda or 'N/A'} &bull; Location: {project.location or 'N/A'}
+          </div>
+
+          <div class="info-card">
+            <table class="info-table">
+              <tr>
+                <td class="info-label">Reported By</td>
+                <td class="info-value">{reporter_name}</td>
+              </tr>
+              <tr>
+                <td class="info-label">Monitoring Date</td>
+                <td class="info-value">{date_str}</td>
+              </tr>
+              <tr>
+                <td class="info-label">Reported Execution</td>
+                <td class="info-value"><strong>{progress_pct}%</strong></td>
+              </tr>
+              <tr>
+                <td class="info-label">Site Documentation</td>
+                <td class="info-value">{images_text}</td>
+              </tr>
+            </table>
+          </div>
+
+          <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #6b7280; margin-top: 20px;">
+            Engineer Site Notes & Observations
+          </div>
+          <div class="notes-box">
+            {monitoring_log.description}
+          </div>
+        </div>
+        <div class="footer">
+          &copy; Azani Project Tracker &bull; Azani Group. All rights reserved.
+        </div>
+      </div>
+    </body>
+    </html>
+    """
+
+    text_content = (
+        f"Site Progress Update - {project.project_code} ({progress_pct}%)\n\n"
+        f"Project: {project.project_name}\n"
+        f"MDA: {project.mda}\n"
+        f"Location: {project.location}\n"
+        f"Reported By: {reporter_name}\n"
+        f"Date: {date_str}\n"
+        f"Progress: {progress_pct}%\n"
+        f"Documentation: {images_text}\n\n"
+        f"Site Notes:\n{monitoring_log.description}\n\n"
+        f"---\nAzani Project Tracker"
+    )
+
+    responses = []
+    for email in recipients:
+        try:
+            resp = send_resend_email(email, subject, html_content, text_content)
+            responses.append(resp)
+        except Exception as e:
+            logger.error(f"Failed sending progress log notification to {email}: {e}")
+
+    return responses
+
