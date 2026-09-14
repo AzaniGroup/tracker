@@ -1,6 +1,7 @@
 import logging
 import resend
 from django.conf import settings
+from django.utils.html import escape, linebreaks
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +71,8 @@ def send_otp_email(user, otp_code: str) -> dict:
 
     subject = f"{otp_code} is your Azani Logistics verification code"
     expiry_minutes = getattr(settings, 'OTP_EXPIRY_MINUTES', 10)
-    user_name = user.get_full_name() or user.username
+    user_name = escape(user.get_full_name() or user.username)
+    safe_otp = escape(str(otp_code))
 
     html_content = f"""
     <!DOCTYPE html>
@@ -191,7 +193,7 @@ def send_otp_email(user, otp_code: str) -> dict:
           </div>
           <div class="otp-box">
             <div class="otp-label">Single-Use Verification Code</div>
-            <div class="otp-code">{otp_code}</div>
+            <div class="otp-code">{safe_otp}</div>
             <div class="badge">Valid for {expiry_minutes} minutes &bull; Single-use only</div>
           </div>
           <div class="security-notice">
@@ -206,8 +208,9 @@ def send_otp_email(user, otp_code: str) -> dict:
     </html>
     """
 
+    plain_user_name = user.get_full_name() or user.username
     text_content = (
-        f"Hello {user_name},\n\n"
+        f"Hello {plain_user_name},\n\n"
         f"Your single-use Azani Logistics verification code is: {otp_code}\n\n"
         f"This code will expire in {expiry_minutes} minutes and can only be used once.\n\n"
         f"If you did not request this code, please contact your administrator immediately."
@@ -236,14 +239,20 @@ def send_progress_log_notification(monitoring_log) -> list:
         return []
 
     project = monitoring_log.project
-    reporter_name = monitoring_log.reported_by.get_full_name() or monitoring_log.reported_by.username
+    raw_reporter = monitoring_log.reported_by.get_full_name() or monitoring_log.reported_by.username
+    reporter_name = escape(raw_reporter)
+    project_code = escape(project.project_code)
+    project_name = escape(project.project_name)
+    mda_text = escape(project.mda or 'N/A')
+    location_text = escape(project.location or 'N/A')
     progress_pct = monitoring_log.reported_execution_percentage
-    date_str = monitoring_log.start_date.strftime("%b %d, %Y") if monitoring_log.start_date else "Recent"
+    date_str = escape(monitoring_log.start_date.strftime("%b %d, %Y") if monitoring_log.start_date else "Recent")
     if monitoring_log.end_date and monitoring_log.end_date != monitoring_log.start_date:
-        date_str += f" – {monitoring_log.end_date.strftime('%b %d, %Y')}"
+        date_str += f" – {escape(monitoring_log.end_date.strftime('%b %d, %Y'))}"
     
     images_count = monitoring_log.images.count()
     images_text = f"{images_count} site photo(s) attached" if images_count > 0 else "No photos attached"
+    escaped_notes = linebreaks(escape(monitoring_log.description or 'No notes provided.'))
 
     subject = f"[Progress Update {progress_pct}%] {project.project_code} - {project.project_name[:50]}"
 
@@ -371,10 +380,10 @@ def send_progress_log_notification(monitoring_log) -> list:
             Site Progress: {progress_pct}% Overall Completion
           </div>
           <div class="project-title">
-            {project.project_code} &mdash; {project.project_name}
+            {project_code} &mdash; {project_name}
           </div>
           <div class="project-meta">
-            MDA: {project.mda or 'N/A'} &bull; Location: {project.location or 'N/A'}
+            MDA: {mda_text} &bull; Location: {location_text}
           </div>
 
           <div class="info-card">
@@ -402,7 +411,7 @@ def send_progress_log_notification(monitoring_log) -> list:
             Engineer Site Notes & Observations
           </div>
           <div class="notes-box">
-            {monitoring_log.description}
+            {escaped_notes}
           </div>
         </div>
         <div class="footer">
@@ -416,13 +425,13 @@ def send_progress_log_notification(monitoring_log) -> list:
     text_content = (
         f"Site Progress Update - {project.project_code} ({progress_pct}%)\n\n"
         f"Project: {project.project_name}\n"
-        f"MDA: {project.mda}\n"
-        f"Location: {project.location}\n"
-        f"Reported By: {reporter_name}\n"
-        f"Date: {date_str}\n"
+        f"MDA: {project.mda or 'N/A'}\n"
+        f"Location: {project.location or 'N/A'}\n"
+        f"Reported By: {raw_reporter}\n"
+        f"Date: {monitoring_log.start_date.strftime('%b %d, %Y') if monitoring_log.start_date else 'Recent'}\n"
         f"Progress: {progress_pct}%\n"
         f"Documentation: {images_text}\n\n"
-        f"Site Notes:\n{monitoring_log.description}\n\n"
+        f"Site Notes:\n{monitoring_log.description or 'No notes provided.'}\n\n"
         f"---\nAzani Project Tracker"
     )
 

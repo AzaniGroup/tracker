@@ -11,6 +11,7 @@ from django.http import HttpResponse
 from django.shortcuts import redirect, get_object_or_404, render
 from django.urls import reverse_lazy
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
 from django.views.generic import (
     TemplateView,
@@ -136,7 +137,7 @@ class VerifyOTPView(View):
             request.session.pop('pre_2fa_user_id', None)
 
             messages.success(request, f"Welcome back, {user.get_full_name() or user.username}!")
-            if next_url:
+            if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
                 return redirect(next_url)
             return redirect(settings.LOGIN_REDIRECT_URL)
 
@@ -147,6 +148,7 @@ class VerifyOTPView(View):
 class ResendOTPView(View):
     """
     Generates a new single-use OTP and sends an email via Resend.
+    Includes a 45-second cooldown to prevent flooding.
     """
     def post(self, request):
         user_id = request.session.get('pre_2fa_user_id')
@@ -162,6 +164,13 @@ class ResendOTPView(View):
 
         if not user.email:
             messages.error(request, "No registered email address found for your account.")
+            return redirect('core:verify_otp')
+
+        # Check cooldown (45 seconds between requests)
+        last_otp = UserOTP.objects.filter(user=user).order_by('-created_at').first()
+        if last_otp and (timezone.now() - last_otp.created_at).total_seconds() < 45:
+            remaining_secs = int(45 - (timezone.now() - last_otp.created_at).total_seconds())
+            messages.warning(request, f"Please wait {remaining_secs} second(s) before requesting another code.")
             return redirect('core:verify_otp')
 
         # Invalidate old OTPs and generate fresh code

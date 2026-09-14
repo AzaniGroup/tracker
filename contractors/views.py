@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q
 from django.forms import modelformset_factory
 from django.shortcuts import get_object_or_404, redirect, render
@@ -10,6 +11,7 @@ from django.views.decorators.http import require_POST
 from django.views.generic import ListView, TemplateView, View
 from urllib.parse import urlencode
 
+from core.permissions import Level3RequiredMixin
 from .forms import CompanyForm, ComplianceRequirementForm, ComplianceUpdateForm, SubcontractorForm
 from .models import Company, CompanyCompliance, ComplianceRequirement, Subcontractor
 
@@ -17,7 +19,7 @@ from .models import Company, CompanyCompliance, ComplianceRequirement, Subcontra
 from django.core.paginator import Paginator, EmptyPage, InvalidPage
 from django.http import Http404
 
-class CompanyListView(ListView):
+class CompanyListView(LoginRequiredMixin, ListView):
     model = Company
     template_name = 'contractors/list_company.html'
     context_object_name = 'companies'
@@ -47,7 +49,7 @@ class CompanyListView(ListView):
         context['current_search'] = self.request.GET.get('q', '')
         return context
 
-class SubcontractorListView(ListView):
+class SubcontractorListView(LoginRequiredMixin, ListView):
     model = Subcontractor
     template_name = 'contractors/list_contractor.html'
     context_object_name = 'subcontractors'
@@ -116,7 +118,7 @@ def edit_subcontractor(request, pk):
             form.save()
             messages.success(request, f"Subcontractor '{sub.name}' updated successfully.")
             next_url = request.POST.get('next') or request.META.get('HTTP_REFERER')
-            if next_url:
+            if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
                 return redirect(next_url)
             return redirect('contractors:contractor_list')
     else:
@@ -206,7 +208,7 @@ def delete_subcontractor(request, pk):
     return redirect('contractors:contractor_list')  
 
 
-class ComplianceMatrixView(TemplateView):
+class ComplianceMatrixView(LoginRequiredMixin, TemplateView):
     template_name = 'contractors/compliance_matrix.html'
 
     def get_context_data(self, **kwargs):
@@ -214,7 +216,10 @@ class ComplianceMatrixView(TemplateView):
         
         # 1. Get the target year from the URL query parameters, default to current year
         current_year = timezone.now().year
-        selected_year = int(self.request.GET.get('year', current_year))
+        try:
+            selected_year = int(self.request.GET.get('year', current_year))
+        except (ValueError, TypeError):
+            selected_year = current_year
         
         # 2. Fetch all active requirements and companies
         requirements = ComplianceRequirement.objects.all()
@@ -274,7 +279,7 @@ class ComplianceMatrixView(TemplateView):
         
         return context
 
-class ManageComplianceView(View):
+class ManageComplianceView(Level3RequiredMixin, View):
     template_name = 'contractors/manage_compliance.html'
     paginate_by = 10
 
