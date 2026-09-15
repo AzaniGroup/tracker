@@ -88,9 +88,31 @@ class CompanyCompliance(models.Model):
     
     updated_at = models.DateTimeField(auto_now=True)
 
+    @property
+    def is_expired(self):
+        """Checks whether the compliance record is past its expiry date or marked EXPIRED."""
+        if self.status == 'EXPIRED':
+            return True
+        if self.expiry_date:
+            from django.utils import timezone
+            return self.expiry_date < timezone.now().date()
+        return False
+
+    @property
+    def document_filename(self):
+        """Returns the base filename of the uploaded document without directory path."""
+        if self.uploaded_file and hasattr(self.uploaded_file, 'name'):
+            import os
+            return os.path.basename(self.uploaded_file.name)
+        return ""
+
     class Meta:
         # Crucial safety constraint: Prevents duplicate tracking entries for the same doc, company, and year.
         unique_together = ('company', 'requirement', 'year')
+        indexes = [
+            models.Index(fields=['year', 'status']),
+            models.Index(fields=['company', 'year']),
+        ]
         ordering = ['-year', 'requirement__name']
 
     def __str__(self):

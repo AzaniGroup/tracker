@@ -13,5 +13,6 @@ urlpatterns = [
     path('companies/delete/<int:pk>/', views.delete_company, name='delete_company'),
     path('compliance/', views.ComplianceMatrixView.as_view(), name='compliance_matrix'),
     path('compliance/manage/', views.ManageComplianceView.as_view(), name='manage_compliance'),
+    path('compliance/upload/', views.upload_compliance_document, name='upload_compliance_document'),
     path('compliance/requirements/', views.manage_compliance_requirements, name='manage_compliance_requirements'),
 ]   

@@ -444,10 +444,24 @@ class ProjectAllocationUpdateView(Level3RequiredMixin, UpdateView):
 
 class ProjectAllocationDeleteView(Level3RequiredMixin, DeleteView):
     model = ProjectAllocation
-    template_name = 'confirm_delete.html'
+    template_name = 'projects/confirm_delete.html'
 
     def get_success_url(self):
         return reverse_lazy('projects:project_detail', kwargs={'pk': self.object.project.pk})
+
+    def form_valid(self, form):
+        project = self.object.project
+        sub_name = self.object.subcontractor.name
+        response = super().form_valid(form)
+        log_project_activity(
+            project=project,
+            user=self.request.user,
+            action_type='SUBCONTRACTOR',
+            title=f"Subcontractor Allocation Removed: {sub_name}",
+            description=f"Removed allocation of subcontractor {sub_name} from project."
+        )
+        messages.success(self.request, f"Subcontractor '{sub_name}' allocation removed successfully.")
+        return response
 
 class UpdateLifecycleStageView(Level3RequiredMixin, View):
     def post(self, request, pk):

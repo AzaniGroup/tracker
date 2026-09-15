@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db import transaction
 from django.db.models import Q
 from django.forms import modelformset_factory
 from django.shortcuts import get_object_or_404, redirect, render
@@ -12,7 +13,7 @@ from django.views.generic import ListView, TemplateView, View
 from urllib.parse import urlencode
 
 from core.permissions import Level3RequiredMixin
-from .forms import CompanyForm, ComplianceRequirementForm, ComplianceUpdateForm, SubcontractorForm
+from .forms import CompanyForm, ComplianceRequirementForm, ComplianceUpdateForm, SingleComplianceUploadForm, SubcontractorForm
 from .models import Company, CompanyCompliance, ComplianceRequirement, Subcontractor
 
 
@@ -328,7 +329,8 @@ class ManageComplianceView(Level3RequiredMixin, View):
                         )
                     )
         if to_create:
-            CompanyCompliance.objects.bulk_create(to_create, ignore_conflicts=True)
+            with transaction.atomic():
+                CompanyCompliance.objects.bulk_create(to_create, ignore_conflicts=True)
 
         queryset = CompanyCompliance.objects.filter(
             year=selected_year,
@@ -397,10 +399,11 @@ class ManageComplianceView(Level3RequiredMixin, View):
         page_number = request.GET.get('page', '1')
 
         ComplianceFormSet = modelformset_factory(CompanyCompliance, form=ComplianceUpdateForm, extra=0)
-        formset = ComplianceFormSet(request.POST)
+        formset = ComplianceFormSet(request.POST, request.FILES)
 
         if formset.is_valid():
-            formset.save()
+            with transaction.atomic():
+                formset.save()
             messages.success(request, "Compliance records updated successfully.")
             params = {}
             if selected_year:
@@ -418,6 +421,63 @@ class ManageComplianceView(Level3RequiredMixin, View):
         messages.error(request, "Please correct the errors in the form before submitting.")
         context = self.get_context_for_request(request, formset=formset)
         return render(request, self.template_name, context)
+
+@login_required
+@require_POST
+def upload_compliance_document(request):
+    """
+    Handles direct and modal-based single document upload and status updates
+    for a company's specific compliance requirement.
+    """
+    if not (
+        request.user.is_superuser or
+        request.user.groups.filter(name__in=['Level 3', 'Level 4']).exists()
+    ):
+        messages.error(request, "Permission denied. You do not have authorization to upload compliance documents.")
+        return redirect('contractors:compliance_matrix')
+
+    company_id = request.POST.get('company_id')
+    requirement_id = request.POST.get('requirement_id')
+    year = request.POST.get('year')
+
+    if not company_id or not requirement_id or not year:
+        messages.error(request, "Invalid request. Missing company, requirement, or year information.")
+        return redirect('contractors:compliance_matrix')
+
+    company = get_object_or_404(Company, pk=company_id)
+    requirement = get_object_or_404(ComplianceRequirement, pk=requirement_id)
+
+    try:
+        year_int = int(year)
+    except (ValueError, TypeError):
+        year_int = timezone.now().year
+
+    with transaction.atomic():
+        record, _ = CompanyCompliance.objects.get_or_create(
+            company=company,
+            requirement=requirement,
+            year=year_int,
+            defaults={'status': 'PENDING'}
+        )
+
+        form = SingleComplianceUploadForm(request.POST, request.FILES, instance=record)
+        if form.is_valid():
+            saved_record = form.save(commit=False)
+            # If a new file is uploaded and status was left as PENDING, promote to SUBMITTED
+            if request.FILES.get('uploaded_file') and form.cleaned_data.get('status') == 'PENDING':
+                saved_record.status = 'SUBMITTED'
+            saved_record.save()
+            messages.success(request, f"Document for {company.name} ({requirement.name} - {year_int}) saved successfully.")
+        else:
+            error_msgs = []
+            for field, errs in form.errors.items():
+                error_msgs.append(f"{field.replace('_', ' ').title()}: {', '.join(errs)}")
+            messages.error(request, f"Could not update document: {'; '.join(error_msgs)}")
+
+    next_url = request.POST.get('next') or request.META.get('HTTP_REFERER')
+    if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
+        return redirect(next_url)
+    return redirect(f"{reverse('contractors:compliance_matrix')}?year={year_int}")
 
 @login_required
 def manage_compliance_requirements(request):
