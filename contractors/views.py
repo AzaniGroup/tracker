@@ -228,7 +228,7 @@ class ComplianceMatrixView(LoginRequiredMixin, TemplateView):
         
         search_query = self.request.GET.get('q', '').strip()
         if search_query:
-            companies = companies.filter(Q(name__icontains=search_query) | Q(contact__icontains=search_query))
+            companies = companies.filter(Q(name__icontains=search_query) | Q(director_name__icontains=search_query))
         
         # 3. Pull all compliance records for the target year in ONE optimized database hit
         compliance_records = CompanyCompliance.objects.filter(year=selected_year).select_related(
