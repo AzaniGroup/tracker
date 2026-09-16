@@ -156,8 +156,10 @@
 
                                 <!-- Expiry Date badge if present -->
                                 {% if cell.record and cell.record.expiry_date %}
-                                <span class="text-[10px] text-gray-500 font-medium">Exp: {{
-                                    cell.record.expiry_date|date:"M d, Y" }}</span>
+                                <span class="inline-flex items-center gap-1 text-[10px] {% if cell.record.is_expired or cell.status == 'EXPIRED' %}text-rose-600 font-semibold bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200/60{% else %}text-gray-500 font-medium{% endif %}">
+                                    <span class="material-symbols-outlined text-[11px]">event</span>
+                                    <span>Exp: {{ cell.record.expiry_date|date:"M d, Y" }}</span>
+                                </span>
                                 {% endif %}
 
                                 <!-- Uploaded File / Action Buttons -->
