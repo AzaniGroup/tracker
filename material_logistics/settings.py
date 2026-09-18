@@ -97,7 +97,7 @@ WSGI_APPLICATION = 'material_logistics.wsgi.application'
 
 #  Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
-if os.getenv("DATABASE_URL") is None:
+if not os.getenv("DATABASE_URL"):
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',

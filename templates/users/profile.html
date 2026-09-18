@@ -152,14 +152,14 @@
     </form>
 
     <!-- 2FA Activation Toggle Card -->
-    <div class="px-6 md:px-8 py-5 border-t border-gray-100 bg-gray-50/50 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+    <div x-data="{ show2FaModal: false, showDeactivateModal: false }" class="px-6 md:px-8 py-5 border-t border-gray-100 bg-gray-50/50 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
       <div class="flex items-center space-x-3">
         <div class="{% if profile.is_2fa_enabled %}bg-emerald-100 text-emerald-700{% else %}bg-amber-100 text-amber-700{% endif %} p-3 rounded-xl">
           <span class="material-symbols-outlined text-2xl">verified_user</span>
         </div>
         <div>
           <div class="text-sm font-bold text-gray-900 flex items-center gap-2">
-            Two-Factor Authentication (2FA)
+            Two-Factor Authentication (OTP)
             {% if profile.is_2fa_enabled %}
               <span class="bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-semibold px-2.5 py-0.5 rounded-full">Activated</span>
             {% else %}
@@ -168,26 +168,131 @@
           </div>
           <p class="text-xs text-gray-500 mt-0.5">
             {% if profile.is_2fa_enabled %}
-              Your account is secured with Two-Factor Authentication.
+              Your account is secured with One-Time Password verification sent to <strong class="text-gray-700">{{ user.email }}</strong>.
             {% else %}
-              Protect your staff account by enabling 2FA security verification.
+              Protect your staff account by enabling OTP login verification.
             {% endif %}
           </p>
         </div>
       </div>
 
-      <form method="POST" action="{% url 'users:toggle_2fa' %}">
-        {% csrf_token %}
-        {% if profile.is_2fa_enabled %}
-          <button type="submit" class="bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-xl text-xs font-semibold shadow-sm transition flex items-center">
+      {% if profile.is_2fa_enabled %}
+        <div>
+          <button type="button"
+                  @click="showDeactivateModal = true"
+                  class="bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-xl text-xs font-semibold shadow-sm transition flex items-center">
             <span class="material-symbols-outlined text-xs mr-1 text-red-500">do_not_disturb_on</span> Deactivate 2FA
           </button>
-        {% else %}
-          <button type="submit" class="bg-[#bfa12c] hover:bg-[#a88d25] text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-md transition flex items-center">
+        </div>
+
+        <!-- Deactivate 2FA Confirmation Modal -->
+        <div x-show="showDeactivateModal"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100 scale-100"
+             x-transition:leave-end="opacity-0 scale-95"
+             class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+             style="display: none;">
+          <div @click.away="showDeactivateModal = false" class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 text-center border border-gray-100">
+            <div class="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4">
+              <span class="material-symbols-outlined text-2xl">warning</span>
+            </div>
+            <h3 class="text-lg font-bold text-gray-900 mb-2">Deactivate Two-Factor Authentication?</h3>
+            <p class="text-xs text-gray-600 mb-6">
+              Your account will no longer require single-use OTP codes during login. This lowers the security level of your account.
+            </p>
+            <form method="POST" action="{% url 'users:toggle_2fa' %}">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="deactivate">
+              <div class="flex items-center justify-center gap-3">
+                <button type="button" @click="showDeactivateModal = false" class="px-4 py-2 rounded-xl border border-gray-300 text-xs font-medium text-gray-700 hover:bg-gray-50 transition">
+                  Cancel
+                </button>
+                <button type="submit" class="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-sm transition">
+                  Yes, Deactivate 2FA
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      {% else %}
+        <div>
+          <button type="button"
+                  @click="show2FaModal = true"
+                  class="bg-[#bfa12c] hover:bg-[#a88d25] text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-md transition flex items-center">
             <span class="material-symbols-outlined text-sm mr-1.5">shield_lock</span> Activate 2FA Now
           </button>
-        {% endif %}
-      </form>
+        </div>
+
+        <!-- Activate 2FA Email Confirmation Modal -->
+        <div x-show="show2FaModal"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100 scale-100"
+             x-transition:leave-end="opacity-0 scale-95"
+             class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+             style="display: none;">
+          <div @click.away="show2FaModal = false" class="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-amber-100">
+            <div class="h-2 bg-gradient-to-r from-amber-400 via-[#bfa12c] to-amber-600"></div>
+            <div class="p-6 text-center">
+              <div class="mx-auto w-14 h-14 bg-amber-50 border border-amber-200 rounded-full flex items-center justify-center mb-4 text-[#bfa12c]">
+                <span class="material-symbols-outlined text-2xl">mark_email_read</span>
+              </div>
+              <h3 class="text-xl font-extrabold text-gray-900 mb-1">Confirm OTP Delivery Email</h3>
+              <p class="text-xs text-gray-500 mb-5 leading-relaxed">
+                Single-use 6-digit login codes will be sent to this email address. Please confirm your email or change it if need be.
+              </p>
+
+              <form method="POST" action="{% url 'users:toggle_2fa' %}" class="space-y-4 text-left">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="activate">
+                <div>
+                  <label for="profile-2fa-email" class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1 flex items-center justify-between">
+                    <span>Email Address</span>
+                    {% if user.email %}
+                      <span class="text-[11px] text-emerald-700 font-semibold flex items-center">
+                        <span class="material-symbols-outlined text-xs mr-0.5">check_circle</span> Registered
+                      </span>
+                    {% else %}
+                      <span class="text-[11px] text-amber-700 font-semibold flex items-center">
+                        <span class="material-symbols-outlined text-xs mr-0.5">error</span> Required
+                      </span>
+                    {% endif %}
+                  </label>
+                  <div class="relative">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 pointer-events-none material-symbols-outlined text-base">mail</span>
+                    <input type="email"
+                           id="profile-2fa-email"
+                           name="email"
+                           value="{{ user.email|default:'' }}"
+                           placeholder="name@company.com"
+                           required
+                           class="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-gray-300 bg-white text-sm text-gray-900 shadow-sm focus:border-[#bfa12c] focus:ring-2 focus:ring-[#bfa12c]/20 outline-none transition">
+                  </div>
+                  <p class="text-[11px] text-gray-400 mt-1">If you update this email, your account profile will also be updated.</p>
+                </div>
+
+                <div class="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
+                  <button type="button"
+                          @click="show2FaModal = false"
+                          class="px-4 py-2.5 rounded-xl border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition">
+                    Cancel
+                  </button>
+                  <button type="submit"
+                          class="bg-[#bfa12c] hover:bg-[#a88d25] text-white font-bold px-5 py-2.5 rounded-xl text-xs shadow-md transition flex items-center">
+                    <span class="material-symbols-outlined text-sm mr-1.5">shield_lock</span>
+                    Confirm Email & Activate 2FA
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      {% endif %}
     </div>
 
   </div>

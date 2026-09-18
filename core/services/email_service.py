@@ -445,3 +445,157 @@ def send_progress_log_notification(monitoring_log) -> list:
 
     return responses
 
+
+def send_2fa_enabled_confirmation_email(user) -> dict:
+    """
+    Sends a confirmation email to the user notifying them that Two-Factor Authentication (OTP)
+    has been successfully activated for their account at their confirmed email address.
+    """
+    to_email = user.email
+    if not to_email:
+        logger.warning(f"User {user.username} has no email address to receive 2FA activation confirmation.")
+        return {"error": "no_email"}
+
+    subject = "Two-Factor Authentication (OTP) Activated - Azani Project Tracker"
+    user_name = escape(user.get_full_name() or user.username)
+    safe_email = escape(to_email)
+
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>2FA Security Activated - Azani Project Tracker</title>
+      <style>
+        body {{
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+          background-color: #f8f6f1;
+          margin: 0;
+          padding: 30px 15px;
+          color: #1f2937;
+        }}
+        .container {{
+          max-width: 520px;
+          margin: 0 auto;
+          background-color: #ffffff;
+          border-radius: 16px;
+          overflow: hidden;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+          border: 1px solid #e5e7eb;
+        }}
+        .header {{
+          background-color: #111827;
+          padding: 24px;
+          text-align: center;
+          border-bottom: 3px solid #bfa12c;
+        }}
+        .header h1 {{
+          color: #ffffff;
+          margin: 0;
+          font-size: 20px;
+          font-weight: 700;
+          letter-spacing: 0.5px;
+        }}
+        .header span {{
+          color: #bfa12c;
+        }}
+        .body-content {{
+          padding: 32px 28px;
+        }}
+        .greeting {{
+          font-size: 16px;
+          font-weight: 600;
+          color: #111827;
+          margin-bottom: 12px;
+        }}
+        .instruction {{
+          font-size: 14px;
+          line-height: 1.6;
+          color: #4b5563;
+          margin-bottom: 20px;
+        }}
+        .status-box {{
+          background-color: #ecfdf5;
+          border: 1px solid #a7f3d0;
+          border-radius: 12px;
+          padding: 18px 20px;
+          margin: 20px 0 24px 0;
+        }}
+        .status-title {{
+          font-size: 14px;
+          color: #065f46;
+          font-weight: 700;
+          margin-bottom: 4px;
+        }}
+        .status-desc {{
+          font-size: 13px;
+          color: #047857;
+          line-height: 1.5;
+        }}
+        .security-notice {{
+          background-color: #fffbeb;
+          border-left: 3px solid #f59e0b;
+          padding: 12px 16px;
+          font-size: 12px;
+          color: #92400e;
+          border-radius: 4px;
+          margin-top: 20px;
+        }}
+        .footer {{
+          background-color: #f9fafb;
+          padding: 18px 24px;
+          text-align: center;
+          font-size: 11px;
+          color: #9ca3af;
+          border-top: 1px solid #f3f4f6;
+        }}
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Azani <span>Project Tracker</span></h1>
+        </div>
+        <div class="body-content">
+          <div class="greeting">Hello {user_name},</div>
+          <div class="instruction">
+            Two-Factor Authentication (OTP) has been successfully activated for your account.
+          </div>
+          <div class="status-box">
+            <div class="status-title">&check; Confirmed Delivery Email</div>
+            <div class="status-desc">
+              Single-use 6-digit login verification codes will be sent to: <strong>{safe_email}</strong>.
+            </div>
+          </div>
+          <div class="instruction">
+            Whenever you log into your Azani Project Tracker account, a verification code will be dispatched to this address to verify your identity.
+          </div>
+          <div class="security-notice">
+            <strong>Security Notice:</strong> If you did not perform or authorize this action, please contact your Azani systems administrator immediately to protect your account.
+          </div>
+        </div>
+        <div class="footer">
+          &copy; Azani Project Tracker &bull; Azani Group. All rights reserved.
+        </div>
+      </div>
+    </body>
+    </html>
+    """
+
+    plain_user_name = user.get_full_name() or user.username
+    text_content = (
+        f"Hello {plain_user_name},\n\n"
+        f"Two-Factor Authentication (OTP) has been successfully activated for your Azani Project Tracker account.\n\n"
+        f"Confirmed Delivery Email: {to_email}\n"
+        f"Single-use verification codes will now be sent to this email address on every sign-in attempt.\n\n"
+        f"If you did not activate this security feature, please contact your administrator immediately.\n\n"
+        f"---\nAzani Project Tracker"
+    )
+
+    try:
+        return send_resend_email(to_email, subject, html_content, text_content)
+    except Exception as e:
+        logger.error(f"Failed sending 2FA activation confirmation email to {to_email}: {e}")
+        return {"error": str(e)}
+

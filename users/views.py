@@ -5,10 +5,13 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.views import View
 from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, DeleteView, ListView, TemplateView, UpdateView
 
+from core.services.email_service import send_2fa_enabled_confirmation_email
 from .forms import JobTitleForm, SelfProfileUpdateForm, UserCreateForm, UserUpdateForm
 from .models import JobTitle, Profile
 
@@ -61,20 +64,64 @@ class ProfileView(LoginRequiredMixin, View):
 @login_required
 @require_POST
 def toggle_2fa_view(request):
-    """Allows authenticated user to toggle or activate 2FA on their profile via POST."""
+    """
+    Allows authenticated users to activate or deactivate 2FA.
+    When activating 2FA, requires the user to confirm their email address
+    or provide an updated email, ensuring single-use OTP codes can be delivered.
+    """
     profile, _ = Profile.objects.get_or_create(user=request.user)
-    profile.is_2fa_enabled = not profile.is_2fa_enabled
-    profile.save()
-    
-    if profile.is_2fa_enabled:
-        messages.success(request, "Two-Factor Authentication (2FA) has been successfully activated for your account.")
-    else:
-        messages.warning(request, "Two-Factor Authentication (2FA) is currently deactivated.")
-        
+    action = request.POST.get('action')
     next_url = request.POST.get('next') or request.META.get('HTTP_REFERER')
-    if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
-        return redirect(next_url)
-    return redirect('users:profile')
+    redirect_target = next_url if (next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()})) else 'users:profile'
+
+    # Check if deactivation was requested
+    if action == 'deactivate' or (not action and profile.is_2fa_enabled):
+        profile.is_2fa_enabled = False
+        profile.save(update_fields=['is_2fa_enabled'])
+        messages.warning(request, "Two-Factor Authentication (2FA) is currently deactivated.")
+        return redirect(redirect_target)
+
+    # Activating 2FA: Email confirmation or update is required
+    email = request.POST.get('email', '').strip()
+    if not email:
+        email = request.user.email.strip() if request.user.email else ''
+
+    if not email:
+        messages.error(
+            request,
+            "An email address is required to activate Two-Factor Authentication (OTP). "
+            "Please provide and confirm a valid email address."
+        )
+        return redirect(redirect_target)
+
+    # Validate email syntax
+    try:
+        validate_email(email)
+    except ValidationError:
+        messages.error(request, f"'{email}' is not a valid email address. Please provide a valid email.")
+        return redirect(redirect_target)
+
+    # Update email on user if it changed or was empty
+    if request.user.email != email:
+        request.user.email = email
+        request.user.save(update_fields=['email'])
+
+    profile.is_2fa_enabled = True
+    profile.save(update_fields=['is_2fa_enabled'])
+
+    # Send confirmation notification email
+    try:
+        send_2fa_enabled_confirmation_email(request.user)
+    except Exception:
+        pass
+
+    messages.success(
+        request,
+        f"Two-Factor Authentication (OTP) has been successfully activated! "
+        f"Login verification codes will be sent to {email}."
+    )
+    return redirect(redirect_target)
+
 
 
 class UserListView(ManagementAccessMixin, ListView):
